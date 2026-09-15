@@ -16,6 +16,7 @@ _LOCAL_DEFAULTS = {
     "BACKEND_REDIS_URL": "redis://localhost:56379/0",
     "BACKEND_CELERY_BROKER_URL": "redis://localhost:56379/1",
     "BACKEND_EMAIL_URL": "smtp://localhost:51025",
+    "BACKEND_TENANT_BASE_DOMAIN": "localhost",
     "BACKEND_CORS_ALLOWED_ORIGINS": "http://localhost:3000,http://localhost:3001",
     "BACKEND_CSRF_TRUSTED_ORIGINS": "http://localhost:3000,http://localhost:3001",
     "BACKEND_LOG_JSON": "false",

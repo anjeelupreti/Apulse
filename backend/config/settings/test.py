@@ -12,6 +12,7 @@ _TEST_DEFAULTS = {
     "BACKEND_DATABASE_URL": "postgres://npms_app:npms_app@localhost:55432/npms",
     "BACKEND_REDIS_URL": "redis://localhost:56379/0",
     "BACKEND_CELERY_BROKER_URL": "memory://",
+    "BACKEND_TENANT_BASE_DOMAIN": "testserver",
 }
 for _key, _value in _TEST_DEFAULTS.items():
     os.environ.setdefault(_key, _value)
@@ -22,7 +23,7 @@ from .base import *
 
 ENVIRONMENT = "test"
 DEBUG = False
-ALLOWED_HOSTS = ["testserver", "localhost", ".localhost"]
+ALLOWED_HOSTS = ["testserver", ".testserver", "localhost", ".localhost"]
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}

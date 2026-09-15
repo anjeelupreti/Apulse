@@ -6,6 +6,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, tenancy, modules/entitlements, offline sync, compliance engines, deployment topologies |
 | [CONTROL_PLANE.md](CONTROL_PLANE.md) | Platform owner console: IA, data model, plans matrix, workflows |
 | [CONVENTIONS.md](CONVENTIONS.md) | Git, naming, backend/frontend/API/testing/logging conventions |
+| [DESIGN_DIRECTION.md](DESIGN_DIRECTION.md) | UI direction: showcase vs operational registers, the login portal brief, domain constraints |
 | [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) | Regulatory claims to verify with primary sources before coding rules |
 | [adr/](adr/) | Architecture Decision Records |
 

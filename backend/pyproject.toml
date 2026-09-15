@@ -75,7 +75,8 @@ known-first-party = ["config", "shared", "kernel", "core", "modules", "control",
 python_version = "3.12"
 strict = true
 plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
-exclude = ['/tests/', '/migrations/']
+# Anchored so the top-level `tests/` directory is excluded too, not just nested ones.
+exclude = ['(^|/)tests/', '(^|/)migrations/']
 
 [[tool.mypy.overrides]]
 module = [

@@ -48,7 +48,9 @@ INSTALLED_APPS = [
     "channels",
     # kernel
     "kernel.foundation",
+    "kernel.geo",
     "kernel.identity",
+    "kernel.tenancy",
 ]
 
 MIDDLEWARE = [
@@ -60,6 +62,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "kernel.tenancy.middleware.TenantMiddleware",
     "kernel.foundation.middleware.LogContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -160,6 +163,13 @@ CORS_ALLOWED_ORIGINS = env.list("BACKEND_CORS_ALLOWED_ORIGINS", default=[])
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ["X-Request-ID", "Retry-After"]
 CSRF_TRUSTED_ORIGINS = env.list("BACKEND_CSRF_TRUSTED_ORIGINS", default=[])
+
+# ------------------------------------------------------------------ tenancy
+# Tenants are addressed as {slug}.{TENANT_BASE_DOMAIN}, or by a verified custom domain.
+TENANT_BASE_DOMAIN = env.str("BACKEND_TENANT_BASE_DOMAIN", default="")
+# Resolving a tenant from a request header alone lets any caller name any tenant. It stays off
+# until tokens carry a verified tenant claim (M2.2).
+TENANT_ALLOW_HEADER_RESOLUTION = env.bool("BACKEND_TENANT_ALLOW_HEADER_RESOLUTION", default=False)
 
 # ------------------------------------------------------------------ API
 REST_FRAMEWORK = {

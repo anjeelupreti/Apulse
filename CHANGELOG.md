@@ -16,3 +16,12 @@ versioning: [Semantic Versioning](https://semver.org).
   queues with request-id propagation, Channels, OpenAPI schema, enforced layering.
 - Local development stack: PostgreSQL (non-superuser app role so row-level security is exercised),
   Redis, MinIO, Mailpit.
+- Multi-tenancy (kernel): tenant registry, legal entities, branches with DDA licence fields, and
+  stock locations; tenant context bound to both the application and the database session;
+  PostgreSQL row-level security on every tenant-scoped table, enforced even for the table owner;
+  tenant resolution by verified custom domain or subdomain; read-only enforcement for suspended
+  accounts that still allows reading, printing and exporting regulatory records; idempotent tenant
+  provisioning that creates a locked narcotics cabinet and a quarantine location for every branch.
+- Nepal administrative divisions with an idempotent `import_geo` command; the seven provinces ship
+  with the code.
+- UI design direction recorded ahead of the frontend work (`docs/DESIGN_DIRECTION.md`).

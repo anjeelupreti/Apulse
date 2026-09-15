@@ -65,6 +65,12 @@ Legend: ⬜ Not verified · 🟨 In progress · ✅ Verified · ❌ Incorrect (u
 | CR-PAY-02 | NRB rules on storing payment references / reconciliation | ⬜ |
 | CR-INS-01 | SSF & Health Insurance Board claim integration specs | ⬜ |
 
+## Reference Data
+
+| ID | Claim / Question | Why it matters | Status |
+|----|------------------|----------------|--------|
+| CR-GEO-01 | Official list of Nepal's **77 districts and 753 local levels** (bilingual, with type: metropolitan / sub-metropolitan / municipality / rural municipality) from CBS or MoFAGA | Branch addresses appear on tax invoices, DDA licence records and inspection packages; a misspelled or invented place name is a defect in a legal document. The 7 provinces are seeded; districts and local levels are deliberately **not**, pending this file. Load with `manage.py import_geo --districts … --local-levels …` | ⬜ |
+
 ## BRD Numbers to Source or Remove
 
 | ID | Claim | Status |
