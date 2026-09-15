@@ -1,0 +1,65 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+*.age
+!*.sops.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+backend/staticfiles/
+backend/media/
+celerybeat-schedule*
+
+# Node / Next
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+storybook-static/
+playwright-report/
+test-results/
+npm-debug.log*
+pnpm-debug.log*
+
+# Tauri / Rust
+frontend/apps/desktop/src-tauri/target/
+
+# Infra
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Data dumps (never commit real data)
+*.dump
+*.sql.gz
+*.bak
+exports/
