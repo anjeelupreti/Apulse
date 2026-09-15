@@ -177,34 +177,36 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 > "Stronger the root, better the project." Nothing here is skipped.
 
 ## M1.1 Repository & conventions
-- [ ] P0 Git init; `main` protected (PR required, status checks required, linear history, signed commits recommended)
-- [ ] P0 Root files: `README.md`, `.gitignore`, `.gitattributes` (LF normalization, binary types, `*.xlsx binary`), `.editorconfig`, `LICENSE` (proprietary), `SECURITY.md`, `CONTRIBUTING.md`, `CODEOWNERS`, `CHANGELOG.md`
-- [ ] P0 `docs/CONVENTIONS.md` approved (naming, API, commit, branching, error codes)
-- [ ] P0 Conventional Commits + commitlint; PR title check
-- [ ] P0 PR template (what/why, screenshots, migration notes, checklist from DoD); issue templates (bug, feature, compliance change, incident)
-- [ ] P0 Pre-commit hooks (`pre-commit` for Python, `lefthook` or husky for JS): format, lint, secrets scan (gitleaks), large-file guard, trailing whitespace, YAML/JSON validity
-- [ ] P0 Top-level task runner (`Makefile` + `justfile` or `Taskfile.yml`) with: `setup`, `dev`, `test`, `lint`, `fmt`, `migrate`, `seed`, `openapi`, `client`, `e2e`, `build`, `clean` — works on Windows (Git Bash/WSL2), macOS, Linux
+- [~] P0 Git init; `main` protected (PR required, status checks required, linear history, signed commits recommended) — **repo initialised & pushed; branch-protection rules still to be configured in GitHub settings**
+- [x] P0 Root files: `README.md`, `.gitignore`, `.gitattributes` (LF normalization, binary types, `*.xlsx binary`), `.editorconfig`, `LICENSE` (proprietary), `SECURITY.md`, `CONTRIBUTING.md`, `CODEOWNERS`, `CHANGELOG.md`
+- [x] P0 `docs/CONVENTIONS.md` approved (naming, API, commit, branching, error codes)
+- [ ] P0 Conventional Commits + commitlint; PR title check — *convention documented; commitlint needs the root Node toolchain from M1.3*
+- [~] P0 PR template (what/why, screenshots, migration notes, checklist from DoD); issue templates (bug, feature, compliance change, incident) — **incident template pending**
+- [x] P0 Pre-commit hooks (`pre-commit` for Python, `lefthook` or husky for JS): format, lint, secrets scan (gitleaks), large-file guard, trailing whitespace, YAML/JSON validity — *JS hooks added with M1.3*
+- [x] P0 Top-level task runner — **`tasks.py` (stdlib Python, no `make` needed on Windows)**: `setup`, `dev`, `test`, `lint`, `fmt`, `migrate`, `openapi`, `ci`, `infra-*`, `worker`, `beat`; `seed`/`client`/`e2e`/`build` added as those capabilities land
 - [ ] P1 Dev container (`.devcontainer/`) for one-command onboarding
 - [ ] P1 Renovate/Dependabot config (grouped, weekly, auto-merge patch for dev deps)
 
 ## M1.2 Backend skeleton (Django)
-- [ ] P0 Python 3.12, dependency management with `uv` (lockfile committed)
-- [ ] P0 Project layout per `backend/README.md` (`config/`, `kernel/`, `core/`, `modules/`, `control/`, `integrations/`, `shared/`)
-- [ ] P0 Settings split: `base`, `local`, `test`, `staging`, `production`; all config via env (`django-environ`/pydantic-settings); `.env.example` complete & documented; startup fails fast on missing required env
-- [ ] P0 PostgreSQL 16 connection (psycopg 3), `CONN_MAX_AGE`, `ATOMIC_REQUESTS=True`, `pg_trgm`, `unaccent`, `uuid-ossp`/`pgcrypto` extensions via migration
-- [ ] P0 UUIDv7 primary key field & base models: `TimeStampedModel`, `UUIDModel`, `TenantScopedModel`, `ArchivableModel`, `DocumentModel`
-- [ ] P0 DRF configured: default auth, permission (deny-by-default), pagination (page + cursor), filtering (`django-filter`), ordering, throttling, versioned URLs `/api/v1/`
-- [ ] P0 `drf-spectacular` OpenAPI 3.1 at `/api/schema/`, Swagger & Redoc (non-prod or auth-protected in prod)
-- [ ] P0 Standard error envelope & error code catalogue (see CONVENTIONS §API)
-- [ ] P0 Structured JSON logging (`structlog`) with `request_id`, `tenant_id`, `user_id`, `branch_id`, `device_id`
-- [ ] P0 Health endpoints: `/healthz` (liveness), `/readyz` (DB, Redis, storage, migrations applied), `/version` (git sha, build time, app version)
-- [ ] P0 Celery app + beat + `django-celery-results`; task base class with tenant context, retries, idempotency key, time limits; queues: `default`, `critical` (billing sync), `bulk` (imports/exports/reports), `notifications`, `integrations`
-- [ ] P0 Channels/ASGI (uvicorn/gunicorn workers) with Redis channel layer
-- [ ] P0 Storage abstraction (`django-storages`, S3/MinIO), private buckets, presigned URL upload/download, virus scan hook (ClamAV) for uploads
-- [ ] P0 Email backend abstraction (console in dev, SMTP/API in prod), templated emails (MJML or django-templated-mail), en/ne
-- [ ] P0 Code quality: `ruff` (lint + format), `mypy` (strict on kernel/core), `django-stubs`, `import-linter` layer contracts, `bandit`
-- [ ] P0 Testing: `pytest`, `pytest-django`, `factory_boy`, `pytest-xdist`, `freezegun`/`time-machine`, `hypothesis` for money/tax/numbering; test DB with RLS enabled (tests run as non-superuser role!)
-- [ ] P0 Management commands: `seed_dev` (demo tenants, users, catalogue), `sync_modules`, `check_tenant_isolation`, `create_platform_admin`
+- [x] P0 Python 3.12, dependency management with `uv` (lockfile committed)
+- [x] P0 Project layout per `backend/README.md` (`config/`, `kernel/`, `core/`, `modules/`, `control/`, `integrations/`, `shared/`)
+- [x] P0 Settings split: `base`, `local`, `test`, `staging`, `production`; all config via env (`django-environ`); `.env.example` complete & documented; startup fails fast on missing required env
+- [x] P0 PostgreSQL 16 connection (psycopg 3), `CONN_MAX_AGE`, `ATOMIC_REQUESTS=True`, `pg_trgm`, `unaccent`, `pgcrypto` extensions via migration
+- [~] P0 UUIDv7 primary key field & base models: `UUIDModel`, `TimeStampedModel`, `BaseModel`, `ArchivableModel`, `VersionedModel` done — **`TenantScopedModel` lands in M2.1, `DocumentModel` in M4.5**
+- [x] P0 Custom user model set before the first migration (`identity.User`, email **or** phone login, DB-level constraint) — *switching later is a painful migration, so it is done up front*
+- [x] P0 DRF configured: default auth, permission (deny-by-default), pagination (page + cursor), filtering (`django-filter`), ordering, throttling, versioned URLs `/api/v1/`
+- [x] P0 `drf-spectacular` OpenAPI at `/api/schema/`, Swagger & Redoc (open in non-prod, admin-only in prod); schema generation is warning-free in CI
+- [x] P0 Standard error envelope & error code catalogue (see CONVENTIONS §API) — bilingual (en/ne), every code registered, unregistered codes fail loudly
+- [~] P0 Structured JSON logging (`structlog`) with `request_id`, `user_id` + secret redaction — **`tenant_id`, `branch_id`, `device_id` bound in M2.1/M2.2**
+- [x] P0 Health endpoints: `/healthz` (liveness, **never touches the DB** — `non_atomic_requests`, regression-tested), `/readyz` (DB, Redis, migrations applied; leaks no connection details), `/version` (git sha, build time, app version) — *storage check added when uploads land in M2.7*
+- [~] P0 Celery app + beat + `django-celery-results`; task base class with retries/backoff + request-id propagation; queues: `default`, `critical`, `bulk`, `notifications`, `integrations` — **tenant context & idempotency keys in M2.1/M2.9**
+- [x] P0 Channels/ASGI with Redis channel layer
+- [~] P0 Storage abstraction (`django-storages`, S3/MinIO) configured & bucketed — **presigned upload/download and ClamAV scanning in M2.7**
+- [~] P0 Email backend abstraction (console/Mailpit in dev, SMTP in prod) — **templated bilingual emails in M2.7**
+- [~] P0 Code quality: `ruff` (lint + format), `mypy --strict`, `django-stubs`, `import-linter` layer contracts (5 contracts enforced in CI) — **`bandit` pending; `ruff` S-rules cover the basics meanwhile**
+- [x] P0 Testing: `pytest`, `pytest-django`, `factory_boy`, `pytest-xdist`, `time-machine`, `hypothesis`; **tests run against real PostgreSQL as a non-superuser role without `BYPASSRLS`**, so RLS behaves as in production
+- [x] P0 Project-integrity tests: no missing migrations, OpenAPI generates clean, custom user model active
+- [ ] P0 Management commands: `seed_dev` (demo tenants, users, catalogue), `sync_modules`, `check_tenant_isolation`, `create_platform_admin` — *need the Phase 2 models first*
 - [ ] P1 `django-debug-toolbar` / `silk` in local only; N+1 detection (`nplusone`) failing tests
 - [ ] P1 Money & quantity value objects in `shared/` with property-based tests
 - [ ] P1 Nepali date (BS↔AD) conversion library in `shared/nepali_calendar/` with data table (BS 1970–2100), fiscal-year helpers, Nepali numerals, amount-in-words (en: lakh/crore; ne: देवनागरी)
@@ -227,16 +229,17 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P1 PWA baseline (manifest, service worker via Serwist) — full offline in Phase 6
 
 ## M1.4 Local development environment
-- [ ] P0 `deployment/compose/docker-compose.dev.yml`: postgres, pgbouncer, redis, minio (+ bucket init), mailpit, celery worker, celery beat, flower, backend, web, console, clamav (optional profile), meilisearch (profile)
-- [ ] P0 One command: `make setup && make dev` → working stack with seeded demo data in < 10 min on a 16 GB laptop
-- [ ] P0 Hot reload backend & frontend; debugger configs (`.vscode/launch.json`) for Django, Celery, Next
+- [~] P0 `deployment/compose/docker-compose.dev.yml`: **postgres (non-superuser app role via init SQL), redis, minio + bucket init, mailpit done** — pgbouncer, celery worker/beat, flower, backend/web/console containers, clamav & meilisearch profiles pending
+- [~] P0 One command: `python tasks.py setup && python tasks.py infra-up && python tasks.py migrate && python tasks.py dev` → working stack — **seeded demo data pending (needs Phase 2 models)**
+- [~] P0 Hot reload backend; `.vscode/settings.json` + recommended extensions — **`launch.json` debugger configs for Django/Celery/Next pending**
+- [x] P0 Dev host ports moved off the defaults (PG 55432, Redis 56379, MinIO 59000/59001, Mailpit 51025/51026) so the stack coexists with other local projects, and avoid Windows reserved port ranges
 - [ ] P0 Local subdomains for tenants (`*.localhost` or `lvh.me`) documented
 - [ ] P0 Seed data: 3 demo tenants (retail single, chain with 3 branches, distributor), users for every role, 500 medicines with batches/expiries, doctors, customers, suppliers
 - [ ] P1 Anonymized production-like dataset generator for performance tests (1M SKUs, 10M ledger rows)
 - [ ] P1 Windows notes (WSL2, line endings, Docker Desktop resources)
 
 ## M1.5 CI/CD
-- [ ] P0 GitHub Actions workflows: `backend.yml` (lint, type, test with Postgres/Redis services, migrations check `makemigrations --check`, import-linter), `frontend.yml` (lint, typecheck, unit, build), `openapi.yml` (schema diff; fail if client not regenerated), `e2e.yml` (Playwright on compose stack), `security.yml` (gitleaks, pip-audit, pnpm audit, Trivy image scan, CodeQL/Semgrep)
+- [~] P0 GitHub Actions workflows: **`backend.yml` done** (ruff, format, import-linter, mypy, missing-migration check, pytest on Postgres/Redis services with the non-superuser role, OpenAPI validation) — pending: `frontend.yml` (lint, typecheck, unit, build), `openapi.yml` (schema diff; fail if client not regenerated), `e2e.yml` (Playwright on compose stack), `security.yml` (gitleaks, pip-audit, pnpm audit, Trivy image scan, CodeQL/Semgrep)
 - [ ] P0 Path filters & caching (uv, pnpm, turbo remote cache, docker layer cache)
 - [ ] P0 Container images: multi-stage Dockerfiles (backend, worker, web, console), non-root user, distroless/slim base, healthchecks, SBOM (syft), image signing (cosign)
 - [ ] P0 Image tagging: `sha`, `semver`, `channel`

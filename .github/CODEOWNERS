@@ -1,0 +1,14 @@
+# Every pull request needs a review from an owner listed here.
+# Kernel, tax, numbering, narcotic and sync code additionally require two approvals
+# (see CONTRIBUTING.md) — configure that in the branch protection rules.
+
+*                           @anjeelupreti
+
+# Foundations: change deliberately.
+/docs/ARCHITECTURE.md       @anjeelupreti
+/docs/CONVENTIONS.md        @anjeelupreti
+/docs/COMPLIANCE_REGISTER.md @anjeelupreti
+/backend/kernel/            @anjeelupreti
+/backend/config/            @anjeelupreti
+/deployment/                @anjeelupreti
+/.github/                   @anjeelupreti

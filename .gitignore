@@ -33,6 +33,8 @@ htmlcov/
 *.egg-info/
 backend/staticfiles/
 backend/media/
+# Generated from code; committed with a drift check once the frontend client lands (M1.5).
+backend/openapi/
 celerybeat-schedule*
 
 # Node / Next

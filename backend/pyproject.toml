@@ -1,0 +1,143 @@
+[project]
+name = "npms-backend"
+version = "0.1.0"
+description = "Nepal e-Health Platform — API, workers and control plane"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "djangorestframework>=3.16",
+    "drf-spectacular>=0.28",
+    "django-filter>=25.1",
+    "django-environ>=0.12",
+    "django-cors-headers>=4.7",
+    # Runtime support for `QuerySet[Model]` / `ModelAdmin[Model]` style annotations.
+    "django-stubs-ext>=5.1",
+    "django-storages[s3]>=1.14",
+    "django-celery-beat>=2.8",
+    "django-celery-results>=2.6",
+    "psycopg[binary]>=3.2",
+    "celery[redis]>=5.5",
+    "redis>=5.2",
+    "channels>=4.2",
+    "channels-redis>=4.2",
+    "structlog>=25.1",
+    "argon2-cffi>=23.1",
+    "sentry-sdk[django,celery]>=2.20",
+    "uvicorn[standard]>=0.34",
+    "gunicorn>=23.0; sys_platform != 'win32'",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.10",
+    "pytest-xdist>=3.6",
+    "pytest-cov>=6.0",
+    "factory-boy>=3.3",
+    "hypothesis>=6.120",
+    "time-machine>=2.16",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "django-stubs[compatible-mypy]>=5.1",
+    "djangorestframework-stubs[compatible-mypy]>=3.15",
+    "import-linter>=2.1",
+    "pre-commit>=4.0",
+]
+
+[tool.uv]
+package = false
+
+# ---------------------------------------------------------------- ruff
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["**/migrations/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "B", "UP", "N", "S", "DJ", "SIM", "RUF",
+    "C4", "DTZ", "T20", "PT", "RET", "ARG",
+]
+ignore = [
+    "RUF012", # mutable class attributes are idiomatic in Django Meta / DRF views
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "ARG001", "ARG002"]
+"config/settings/*.py" = ["F403", "F405", "S105", "E402"]
+"config/asgi.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "shared", "kernel", "core", "modules", "control", "integrations"]
+
+# ---------------------------------------------------------------- mypy
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+exclude = ['/tests/', '/migrations/']
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "kombu.*",
+    "environ.*",
+    "channels.*",
+    "storages.*",
+    "factory.*",
+    "sentry_sdk.*",
+    "django_celery_beat.*",
+    "django_celery_results.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["kernel.foundation.tasks", "config.celery"]
+disallow_subclassing_any = false
+disallow_untyped_calls = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+# ---------------------------------------------------------------- pytest
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["."]
+testpaths = ["shared", "kernel", "core", "modules", "control", "integrations", "tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error::RuntimeWarning"]
+
+# ---------------------------------------------------------------- import-linter
+[tool.importlinter]
+root_packages = ["shared", "kernel", "core", "modules", "control", "integrations", "config"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: modules -> core -> kernel -> shared"
+type = "layers"
+layers = ["modules", "core", "kernel", "shared"]
+
+[[tool.importlinter.contracts]]
+name = "shared is framework-agnostic"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["django", "rest_framework", "celery", "channels"]
+
+[[tool.importlinter.contracts]]
+name = "Control plane depends only on kernel and shared"
+type = "forbidden"
+source_modules = ["control"]
+forbidden_modules = ["core", "modules"]
+
+[[tool.importlinter.contracts]]
+name = "Integrations are adapters: no dependency on modules or control"
+type = "forbidden"
+source_modules = ["integrations"]
+forbidden_modules = ["modules", "control"]
+
+[[tool.importlinter.contracts]]
+name = "Domain code never imports the project configuration package"
+type = "forbidden"
+source_modules = ["shared", "kernel", "core", "modules", "control", "integrations"]
+forbidden_modules = ["config"]

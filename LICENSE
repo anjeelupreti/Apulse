@@ -1,0 +1,13 @@
+Copyright (c) 2026 Apulse. All rights reserved.
+
+This software and its source code are proprietary and confidential.
+
+No part of this repository may be copied, modified, merged, published, distributed, sublicensed,
+or sold without the prior written permission of the copyright holder. Access to this repository
+does not grant any licence to use the software.
+
+Third-party components are used under their own licences; see the dependency manifests
+(backend/pyproject.toml, frontend package manifests) and the generated SBOM for each release.
+
+TODO (M0.4 / X-LEGAL): replace "Apulse" with the registered company name once incorporation is
+complete, and confirm this notice with legal counsel.

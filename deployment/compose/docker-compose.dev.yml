@@ -1,0 +1,79 @@
+# Local development infrastructure. Apps run on the host (python tasks.py dev) for fast reload.
+# Usage: python tasks.py infra-up | infra-down | infra-logs
+#
+# Host ports are deliberately non-standard (5xxxx) so this stack can run alongside other
+# projects that already use 5432/6379/9000/1025. Override with NPMS_*_PORT if needed.
+name: npms-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: npms_admin
+      POSTGRES_PASSWORD: npms_admin
+      POSTGRES_DB: npms
+    ports:
+      - "${NPMS_PG_PORT:-55432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U npms_admin -d npms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${NPMS_REDIS_PORT:-56379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # MinIO publishes to quay.io; the Docker Hub mirrors are no longer pullable.
+    image: quay.io/minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: npms
+      MINIO_ROOT_PASSWORD: npms-minio-secret
+    ports:
+      - "${NPMS_MINIO_PORT:-59000}:9000"
+      - "${NPMS_MINIO_CONSOLE_PORT:-59001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 npms npms-minio-secret &&
+      mc mb --ignore-existing local/npms-attachments local/npms-exports &&
+      mc ilm rule add --expire-days 7 local/npms-exports || true
+      "
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${NPMS_SMTP_PORT:-51025}:1025"
+      - "${NPMS_MAILPIT_UI_PORT:-51026}:8025"
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

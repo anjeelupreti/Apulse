@@ -1,0 +1,86 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", ".github/workflows/backend.yml"]
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+    env:
+      BACKEND_ENVIRONMENT: test
+      BACKEND_SECRET_KEY: ci-only-not-a-real-secret
+      BACKEND_DATABASE_URL: postgres://npms_app:npms_app@localhost:5432/npms
+      BACKEND_REDIS_URL: redis://localhost:6379/0
+      BACKEND_CELERY_BROKER_URL: memory://
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The app role is intentionally NOT a superuser and has no BYPASSRLS, so row-level
+      # security is exercised in CI exactly as in production. CREATEDB is only for test databases.
+      - name: Create application database role
+        working-directory: .
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE npms_app LOGIN PASSWORD 'npms_app' NOSUPERUSER NOCREATEROLE CREATEDB NOBYPASSRLS;"
+          PGPASSWORD=postgres psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE npms OWNER npms_app;"
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check --output-format=github .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Architecture layering
+        run: uv run lint-imports
+
+      - name: Types
+        run: uv run mypy .
+
+      - name: Missing migrations
+        run: uv run python manage.py makemigrations --check --dry-run
+
+      - name: Tests
+        run: uv run pytest -q
+
+      - name: OpenAPI schema is valid and warning-free
+        run: uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null

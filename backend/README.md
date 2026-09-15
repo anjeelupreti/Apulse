@@ -79,7 +79,35 @@ backend/
 ```
 
 ## Layer rules (enforced by import-linter)
-`shared` ← `kernel` ← `core` ← `modules`; `control` → kernel only; `integrations` are reached through ports. See [docs/ARCHITECTURE.md §3](../docs/ARCHITECTURE.md).
+`shared` ← `kernel` ← `core` ← `modules`; `control` → kernel only; `integrations` are reached through ports. See [docs/ARCHITECTURE.md §3](../docs/ARCHITECTURE.md). Five contracts run in CI; a violating import fails the build rather than being caught in review.
 
-## Status
-Skeleton pending. Build order follows [docs/CHECKLIST.md](../docs/CHECKLIST.md): M1.2, then Phase 2.
+## Commands
+Run everything through the root task runner (`python tasks.py`), from the repository root:
+
+```bash
+python tasks.py setup      # uv sync, create backend/.env, install git hooks
+python tasks.py infra-up   # PostgreSQL 55432, Redis 56379, MinIO 59000, Mailpit 51025/51026
+python tasks.py migrate
+python tasks.py dev        # http://127.0.0.1:8000
+python tasks.py lint       # ruff + format + import-linter + mypy + missing-migration check
+python tasks.py test
+python tasks.py openapi    # backend/openapi/schema.yaml
+```
+
+Useful URLs: `/healthz`, `/readyz`, `/version`, `/api/v1/me/`, `/api/docs/`, `/django-admin/`.
+
+## What exists today (M1.2 complete)
+- Environment-driven split settings; required variables have no default, so a misconfigured
+  deployment fails at startup rather than silently running on a dev value.
+- `identity.User` with UUIDv7 primary key and email **or** phone login, enforced by a DB constraint.
+  Set before the first migration, because changing `AUTH_USER_MODEL` later is a painful migration.
+- Standard bilingual (en/ne) error envelope over a registered error-code catalogue.
+- Request-id correlation on every request and propagated into Celery tasks.
+- `/healthz` deliberately never touches the database: a liveness probe that needs the DB turns a
+  brief DB blip into a container restart loop.
+- Tests run against real PostgreSQL as a **non-superuser role without `BYPASSRLS`**, so the
+  row-level security added in M2.1 is exercised exactly as in production.
+
+## Next
+Phase 2 (kernel): tenancy + RLS, authentication/2FA, RBAC, audit, module registry, entitlements.
+See [docs/CHECKLIST.md](../docs/CHECKLIST.md).
