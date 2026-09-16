@@ -65,3 +65,10 @@ versioning: [Semantic Versioning](https://semver.org).
   database refuses to change or delete those records; a mistake is corrected by a reversing entry.
   Stock is issued nearest-expiry-first, and expired or quarantined stock is never picked. Selling
   expired stock is refused outright, while writing it off or returning it stays possible.
+- Suppliers and customers as a single record, since in a pharmacy they overlap.
+- Goods receipts. A delivery is entered as a draft and moves no stock until it is posted; posting
+  creates the batches, brings the stock in and numbers the document, all at once. Bonus quantity
+  ("10 + 1 free") is treated as stock that lowers the cost of the whole line, delivery charges are
+  spread across lines, and VAT is counted as cost only for a pharmacy that cannot reclaim it.
+  Entering the same supplier invoice twice is refused, as is receiving stock that has already
+  expired unless someone confirms it deliberately.

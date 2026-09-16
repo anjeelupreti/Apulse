@@ -558,8 +558,8 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P0 Supplier-item link (supplier codes, last rates, lead time, MOQ)
 - [ ] P0 [DOC] Purchase Requisition/Indent (branch → HQ) — P1 for single store
 - [ ] P0 [DOC] Purchase Order: from reorder suggestions / shortbook / manual; send PDF via email/WhatsApp; partial receipts; close short
-- [ ] P0 [DOC] Goods Receipt (GRN) / Purchase Invoice entry: supplier invoice no & date (BS/AD), batch, expiry, mfg date, qty, free qty (scheme), rate, MRP, discount %, VAT per line, freight/other charges allocation, rounding; validations (expiry < N months warning, MRP change alert vs last batch, rate variance vs PO/last purchase alert); barcode assignment/printing on receipt
-- [ ] P0 Duplicate supplier invoice number detection
+- [~] P0 [DOC] Goods Receipt: supplier invoice number & date, batch, expiry, mfg date, quantity, **free quantity treated as stock that lowers the whole line's unit cost**, rate, MRP **per batch and converted to base units**, discount %, **freight spread across lines with the rounding difference absorbed so shares always add back**, and **VAT counted as cost only where it cannot be reclaimed**. Draft moves no stock; posting creates batches, moves stock and numbers the document in one transaction. Already-expired stock is refused unless confirmed deliberately, since it is sometimes taken in only to be returned. Cancelling reverses the movements and **keeps the number**, because a vanished document is a gap in the run. *Pending: rate-variance and MRP-change alerts, short-expiry warning, barcode printing on receipt, BS date entry*
+- [x] P0 Duplicate supplier invoice number detection — the most common way stock gets doubled
 - [ ] P0 3-way match PO ↔ GRN ↔ supplier invoice (variance tolerance setting)
 - [ ] P0 [DOC] Purchase Return / Debit Note (expiry, damage, wrong item, rate difference); supplier claim tracking & settlement
 - [ ] P0 Shortbook (digital "notebook" of items to order — added from POS when out of stock, auto-added below reorder level)
