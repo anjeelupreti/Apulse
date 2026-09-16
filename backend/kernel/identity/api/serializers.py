@@ -50,10 +50,11 @@ class MeContextSerializer(serializers.Serializer[Any]):
     tenant = TenantSummarySerializer(read_only=True, allow_null=True)
     memberships = MembershipSerializer(many=True, read_only=True)
     branches = BranchSummarySerializer(many=True, read_only=True)
-    # Populated by RBAC (M2.3) and the entitlement resolver (M2.5). Present now so the client
-    # contract does not change when they arrive.
     permissions = serializers.ListField(child=serializers.CharField(), read_only=True)
+    #: Features that are on for this account.
     features = serializers.ListField(child=serializers.CharField(), read_only=True)
+    #: Ceilings, so the client can warn before the server refuses ("3 of 5 branches used").
+    limits = serializers.DictField(read_only=True)
     server_time = serializers.DateTimeField(read_only=True)
 
 

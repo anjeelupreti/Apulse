@@ -1,7 +1,7 @@
 """Tenant lifecycle. The only supported way to create or change the state of a tenant."""
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import structlog
 from django.db import transaction
@@ -78,12 +78,14 @@ def provision_tenant(
             defaults={"tenant": tenant, "is_primary": True, "is_verified": True},
         )
 
-    # Imported here rather than at module load: access control builds on tenancy, so importing it
-    # the other way round at import time would be a cycle.
+    # Imported here rather than at module load: access control and entitlements build on tenancy,
+    # so importing them the other way round at import time would be a cycle.
+    from kernel.entitlements.services import install_core_modules
     from kernel.rbac import system_roles
     from kernel.rbac.services import assign_role, sync_system_roles
 
     with tenant_context(tenant.id):
+        install_core_modules(tenant)
         roles = {role.code: role for role in sync_system_roles(tenant)}
 
         if owner is not None:
@@ -126,6 +128,47 @@ def _create_default_locations(*, tenant: Tenant, branch: Branch) -> None:
             code=code,
             defaults={"name": location_name, "type": location_type, "is_sellable": is_sellable},
         )
+
+
+@transaction.atomic
+def create_branch(
+    *,
+    legal_entity: LegalEntity,
+    code: str,
+    name: str,
+    name_ne: str = "",
+    is_warehouse: bool = False,
+    actor: "User | None" = None,
+    **fields: object,
+) -> Branch:
+    """Open a branch, refusing to go past what the account's plan includes.
+
+    Enforced here rather than in a view, so the ceiling holds however the branch is created:
+    the API, an import, the control plane or a support script.
+    """
+    from kernel.audit import services as audit
+    from kernel.entitlements import resolver as entitlements
+
+    entitlements.require_capacity(
+        "platform.branches", used=Branch.objects.filter(is_active=True).count()
+    )
+
+    branch = cast(
+        "Branch",
+        Branch.objects.create(
+            legal_entity=legal_entity,
+            code=code,
+            name=name,
+            name_ne=name_ne,
+            is_warehouse=is_warehouse,
+            **fields,
+        ),
+    )
+    _create_default_locations(tenant=legal_entity.tenant, branch=branch)
+    # record_create, not record: a branch's opening values are worth having on the record,
+    # including the DDA licence it was set up with.
+    audit.record_create(branch, actor=actor)
+    return branch
 
 
 def suspend_tenant(tenant: Tenant, *, reason: str) -> Tenant:

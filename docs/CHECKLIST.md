@@ -324,14 +324,14 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P1 Suspicious activity rules (e.g., many voids, after-hours narcotic sales, bulk export) → alerts to owner
 
 ## M2.5 Module registry, entitlements & feature flags
-- [ ] P0 `ModuleManifest` & `Feature` dataclasses; manifest discovery at startup; `sync_modules` command writes `Module`, `ModuleVersion`, `Feature`, `Permission` tables
-- [ ] P0 Dependency graph validation (cycle detection; install requires dependencies; uninstall blocked if dependents)
-- [ ] P0 `TenantModule` (installed, enabled, installed_at, config), `TenantFeatureOverride` (grant/revoke/limit value, reason, expiry, set_by)
-- [ ] P0 Entitlement resolver (see ARCHITECTURE §5.2) + Redis cache + invalidation events; unit tests for every rule combination
-- [ ] P0 Limits & quotas: `UsageMeter` (tenant, metric, period, value); enforcement helpers; soft-limit warnings at 80/100%; hard-limit behaviour configurable per feature
-- [ ] P0 Global feature flags: kill switch, percentage rollout (stable hashing on tenant id), allow-list/deny-list, beta cohort, start/end dates
-- [ ] P0 Read-only mode enforcement (suspended tenants, disabled modules) — writes return `403 TENANT_READ_ONLY` / `MODULE_READ_ONLY`, exports still allowed
-- [ ] P0 Frontend consumption: nav generation, route guard, component guards, upgrade prompts ("Available on Professional plan — contact sales/upgrade")
+- [x] P0 `ModuleManifest` / `FeatureSpec` dataclasses declared in each app's `module.py`, discovered at startup; `sync_modules` command **and** a `post_migrate` hook write the `Module` and `Feature` tables, so every environment including the test database reflects the manifests as they are now rather than replaying an old data migration. **Nothing is deleted on sync**: a feature dropped from the code keeps its row and is reported, because removing it would cascade away the grants recording what customers bought
+- [x] P0 Dependency graph validation — missing dependency and circular dependency both fail **at startup**, not at install time when it would be a customer's problem; install resolves dependencies first
+- [x] P0 `TenantModule` (installed, enabled, config, disabled reason) and `FeatureGrant` (value, source, reason, expiry, granted_by) — *uninstall-blocked-if-dependents pending; disable is the supported path and keeps the data*
+- [x] P0 Entitlement resolver: **plan sets the base, add-ons add to it, an override replaces the result outright**, expired grants stop counting, a disabled module hides its features while the grants wait. Cached by version token rather than key deletion, so a stale answer is never *read* — a grant or revocation takes effect on the next request
+- [~] P0 Limits & quotas: `UsageMeter` model, `require_capacity()` / `remaining()` helpers, and **the branch ceiling enforced in the service layer so it holds however a branch is created** — quota consumption, 80% soft warnings and per-feature hard-limit behaviour pending
+- [x] P0 Global feature flags: kill switch, percentage rollout with **stable per-account bucketing** (raising the percentage only ever adds accounts; a rollout that reshuffled on each deploy would be an outage), allow-list, deny-list, scheduled window
+- [~] P0 Read-only mode: `TENANT_READ_ONLY` enforced for suspended accounts (M2.1); **`MODULE_NOT_ENABLED` and `FEATURE_NOT_ENTITLED` available as DRF permission classes** — applied per endpoint as modules are built
+- [ ] P0 Frontend consumption: nav generation, route guard, component guards, upgrade prompts — *`/me/context` already returns `features` and `limits` for this*
 - [ ] P1 Module settings schema rendering ([SETTING])
 - [ ] P1 Module lifecycle hooks: `on_install`, `on_enable`, `on_disable`, `on_upgrade(from, to)`, `on_uninstall` (data retained)
 

@@ -39,3 +39,9 @@ versioning: [Semantic Versioning](https://semver.org).
   database refuses to update, delete or truncate the table. `verify_chain()` reports whether the
   trail is intact and, if not, exactly where it breaks. Changes are recorded field by field, with
   secrets shown as changed but never printed. Permission changes are recorded automatically.
+- Modules and entitlements: modules are declared in code and synced into the database so plans can
+  reference them; what an account may use resolves from its installed modules and granted features.
+  Plans set the base, add-ons add to it, and a manual override replaces the result. Feature flags
+  give a kill switch and staged rollouts. Account limits, such as how many branches a plan
+  includes, are enforced in the service layer, so the ceiling holds however a branch is created.
+  `/api/v1/me/context` now returns the account's features and limits alongside its permissions.

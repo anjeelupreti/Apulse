@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from kernel.entitlements import resolver as entitlements
 from kernel.rbac import resolver
 from kernel.tenancy.models import Branch, Tenant, TenantMembership
 from shared.errors import DomainError, codes
@@ -39,6 +40,23 @@ def _validated(serializer_class: type, request: Request) -> dict[str, Any]:
 
 def _current_user(request: Request) -> User:
     return cast("User", request.user)
+
+
+def entitlement_features() -> dict[str, Any]:
+    active = entitlements.current_or_none()
+    return dict(active.features) if active else {}
+
+
+def entitlement_limits() -> dict[str, Any]:
+    """Ceilings the client can show before the server refuses, such as "3 of 5 branches"."""
+    active = entitlements.current_or_none()
+    if active is None:
+        return {}
+    return {
+        code: value
+        for code, value in active.features.items()
+        if not isinstance(value, bool) and value is not None
+    }
 
 
 @method_decorator(ensure_csrf_cookie, name="get")
@@ -138,8 +156,8 @@ class MeContextView(APIView):
             "memberships": memberships,
             "branches": branches,
             "permissions": sorted(resolver.permissions_for(user)),
-            # Filled in by the entitlement resolver (M2.5).
-            "features": [],
+            "features": sorted(code for code, value in entitlement_features().items() if value),
+            "limits": entitlement_limits(),
             "server_time": timezone.now(),
         }
         return Response(MeContextSerializer(payload).data)
