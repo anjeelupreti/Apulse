@@ -9,6 +9,8 @@
 | [DESIGN_DIRECTION.md](DESIGN_DIRECTION.md) | UI direction: showcase vs operational registers, the login portal brief, domain constraints |
 | [COMPLIANCE_REGISTER.md](COMPLIANCE_REGISTER.md) | Regulatory claims to verify with primary sources before coding rules |
 | [adr/](adr/) | Architecture Decision Records |
+| [research/nepal-regulatory-findings.md](research/nepal-regulatory-findings.md) | What the Acts and DDA publications actually say, and which primary documents are still needed |
+| [research/competitors.md](research/competitors.md) | Okhati and the Nepali market; what the Indian systems do and do not transfer |
 
 ## Planned folders
 

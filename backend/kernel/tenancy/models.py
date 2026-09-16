@@ -259,6 +259,13 @@ class Branch(TenantScopedModel):
 
     dda_licence_number = models.CharField(max_length=50, blank=True)
     dda_licence_expiry = models.DateField(null=True, blank=True)
+    #: Retail pharmacy registration and renewal is handled at province level, so two branches of
+    #: one chain may renew with different offices on different cycles (CR-DDA-05).
+    dda_licence_authority = models.CharField(
+        max_length=120,
+        blank=True,
+        help_text=_("The office that issued the licence: the province, or DDA centrally."),
+    )
 
     is_warehouse = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
