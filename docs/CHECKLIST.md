@@ -337,7 +337,9 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 
 ## M2.6 Settings, numbering, calendar, localization
 - [ ] P0 Settings service with scopes (platform default → plan default → tenant → legal entity → branch → user) and typed access
-- [ ] P0 **Numbering Service**: series per (legal entity/branch, document type, fiscal year, optional device); pattern tokens (`{BRANCH}`, `{FY}`, `{BS_YYYY}`, `{SEQ:6}`); gapless via row-lock counter table; device range leasing; FY auto-rollover; preview; audit; manual reset forbidden after first use
+- [x] P0 **Numbering Service**: one series per branch × document type × fiscal year; pattern tokens `{TYPE}` `{BRANCH}` `{FY}` `{FY_SHORT}` `{BS_YYYY}` `{SEQ:6}` validated on registration (a pattern with no `{SEQ}`, or two, is rejected); **sequential via `SELECT FOR UPDATE` on the counter row**; device range leasing for offline billing, with the series skipping past a lent block so server and device can never collide; **fiscal-year rollover to 1 on Shrawan 1, and a backdated document still uses its own year's series**; preview without consuming; series creation and every lease audited; **pattern and counter frozen once a number has been issued**, because renumbering would reuse numbers that documents already carry. Document types are registered in code like permissions, so a typo cannot silently start a second series
+- [ ] P0 Numbering: assign at **post**, never at draft — an abandoned draft that took a number leaves a gap. To be enforced by each document's state machine as it is built (M4.7)
+- [ ] P0 Numbering: releasing a partly used leased block leaves a deliberate gap in the branch's run. **Blocked on CR-IRD-06** — IRD must confirm leased ranges are acceptable before this is used in a real pharmacy
 - [~] P0 Fiscal year (BS-based, Shrawan 1 – Ashadh end): **`FiscalYear` with `2082/83` and `8283` labels, correct month-to-year attribution, and Gregorian bounds** — the stored period list and period locks arrive with accounting (M4.10)
 - [~] P0 **Bikram Sambat engine: conversion both ways, a table loader, and validators** (month lengths 29–32, years 365–366, consecutive years, and a new-year drift check that catches accumulated errors). **No table is bundled on purpose** — the month lengths are published, not computed, and one wrong day shifts invoice dates and fiscal years. Supply a verified table via `BACKEND_BS_CALENDAR_FILE`; check it with `manage.py validate_bs_calendar` (CR-CAL-01). *Date pickers, per-user display preference and `_bs` fields in API responses still to come*
 - [x] P0 Number formatting: South Asian grouping (1,00,000 not 100,000), Devanagari numerals, NPR with `रू`, half-up money rounding, and **amount-in-words in lakh and crore for tax invoices** — *Nepali wording needs a native reviewer before it is written*
@@ -984,6 +986,7 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P0 Playwright e2e suites per module; runs nightly on staging & on release candidates
 - [ ] P0 Regulatory regression pack (invoice fields, register formats, rule sets) — must pass before any release
 - [ ] P0 Test data management: factories, anonymized fixtures, no production PII in non-prod
+- [ ] P1 **`transactional_db` tests will fail until addressed**: Django flushes with `TRUNCATE`, and the audit table's append-only trigger refuses it (by design). When a test genuinely needs a real transaction, add a fixture that drops and restores that one trigger around it — do not weaken the trigger itself
 - [ ] P1 Contract tests for integrations; mutation testing on tax/numbering modules
 - [ ] P1 Manual exploratory test charters per release; UAT sign-off template for pilot customers
 

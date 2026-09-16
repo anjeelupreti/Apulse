@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "kernel.rbac",
     "kernel.audit",
     "kernel.entitlements",
+    "kernel.numbering",
 ]
 
 MIDDLEWARE = [

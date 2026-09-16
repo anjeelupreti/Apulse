@@ -51,8 +51,7 @@ def test_labels_are_written_the_way_invoices_write_them(calendar):
 def test_a_century_boundary_still_reads_correctly():
     """2099/00, not 2099/100."""
     from shared.nepali_calendar.table import build_table, current_table, load_table
-
-    from .conftest import SYNTHETIC_MONTHS
+    from shared.nepali_calendar.testing import SYNTHETIC_MONTHS
 
     previous = current_table()
     load_table(

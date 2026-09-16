@@ -51,3 +51,7 @@ versioning: [Semantic Versioning](https://semver.org).
   date on every later invoice. Supply a verified table and check it with `validate_bs_calendar`.
 - Nepali number formatting: 1,00,000 rather than 100,000, Devanagari numerals, rupee amounts, and
   totals written in words using lakh and crore, as a tax invoice requires.
+- Document numbering: each branch gets its own run of invoice numbers per fiscal year, restarting
+  at 1 on Shrawan 1, with the number format and the counter frozen once the first number has been
+  issued. Offline counters are lent a block of numbers in advance so they can keep billing without
+  a connection, and the server skips past anything it has lent.

@@ -16,8 +16,11 @@ from shared.nepali_calendar import (
     month_name,
 )
 from shared.nepali_calendar.table import build_table
-
-from .conftest import SYNTHETIC_EPOCH_DATE, SYNTHETIC_EPOCH_YEAR, SYNTHETIC_MONTHS
+from shared.nepali_calendar.testing import (
+    SYNTHETIC_EPOCH_DATE,
+    SYNTHETIC_EPOCH_YEAR,
+    SYNTHETIC_MONTHS,
+)
 
 
 # --------------------------------------------------------------------------- conversion
