@@ -136,6 +136,13 @@ class Item(TenantScopedModel, ArchivableModel):
         help_text=_("Single base units may be sold, such as four tablets out of a strip."),
     )
 
+    #: Default printed price per base unit, used when stock carries none of its own.
+    #: Medicines normally price per batch, because the printed price differs between lots;
+    #: general goods such as a thermometer have one price that belongs to the item.
+    mrp = models.DecimalField(
+        max_digits=18, decimal_places=4, null=True, blank=True, verbose_name=_("MRP")
+    )
+
     hs_code = models.CharField(max_length=20, blank=True)
     is_active = models.BooleanField(default=True)
 

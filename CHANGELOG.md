@@ -72,3 +72,9 @@ versioning: [Semantic Versioning](https://semver.org).
   spread across lines, and VAT is counted as cost only for a pharmacy that cannot reclaim it.
   Entering the same supplier invoice twice is refused, as is receiving stock that has already
   expired unless someone confirms it deliberately.
+- The counter sale. A bill is built as a draft and moves no stock until it is issued; issuing takes
+  the invoice number, sells the batch nearest to expiry first, and fixes the totals. Prices come
+  from the price printed on the batch on the shelf, selling above it is refused, and tax is worked
+  back out of the shelf price rather than added to it. Which batch each customer received is
+  recorded, so a recall can be answered. Reprints are counted so copies can be marked, and
+  cancelling an invoice puts the stock back while keeping the number.

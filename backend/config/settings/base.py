@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "core.parties",
     "core.inventory",
     "core.purchasing",
+    "core.sales",
 ]
 
 MIDDLEWARE = [
