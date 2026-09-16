@@ -51,6 +51,33 @@ DELIVERY_STAFF = "delivery_staff"
 
 _VIEW_ORGANISATION = ("tenancy.branch.view", "tenancy.location.view")
 
+#: Serving a customer: build a bill, issue it, take the money, print it. Deliberately stops short
+#: of cancelling a tax document, crediting money back, or putting a return on the shelf.
+_SELL = (
+    "sales.invoice.view",
+    "sales.invoice.build",
+    "sales.invoice.issue",
+    "sales.invoice.reprint",
+    "sales.credit_note.view",
+    "payments.payment.view",
+    "payments.payment.take",
+    "payments.shift.open",
+    "payments.shift.close",
+    "payments.shift.view",
+)
+
+#: What somebody trusted with the money side may do on top: give it back, put a bill on account,
+#: reverse a mistake. Each of these is a way money leaves, so none is part of serving a customer.
+_HANDLE_MONEY = (
+    "sales.invoice.cancel",
+    "sales.invoice.discount",
+    "sales.credit_note.issue",
+    "payments.payment.refund",
+    "payments.payment.reverse",
+    "payments.credit.sell",
+    "payments.ledger.view",
+)
+
 SYSTEM_ROLES: tuple[SystemRole, ...] = (
     SystemRole(
         code=OWNER,
@@ -86,6 +113,11 @@ SYSTEM_ROLES: tuple[SystemRole, ...] = (
         description="The registered pharmacist responsible for the branch and its registers.",
         permissions=(
             *_VIEW_ORGANISATION,
+            *_SELL,
+            *_HANDLE_MONEY,
+            "sales.credit_note.return_to_shelf",
+            "payments.credit.override",
+            "payments.shift.approve",
             "tenancy.location.manage",
             "identity.user.view",
             "identity.credential.view",
@@ -97,21 +129,28 @@ SYSTEM_ROLES: tuple[SystemRole, ...] = (
         name_en="Pharmacist",
         name_ne="फार्मासिस्ट",
         description="Dispenses medicines and counsels patients.",
-        permissions=(*_VIEW_ORGANISATION, "identity.credential.view"),
+        permissions=(
+            *_VIEW_ORGANISATION,
+            *_SELL,
+            "sales.credit_note.issue",
+            "sales.credit_note.return_to_shelf",
+            "payments.payment.refund",
+            "identity.credential.view",
+        ),
     ),
     SystemRole(
         code=ASSISTANT_PHARMACIST,
         name_en="Assistant pharmacist",
         name_ne="सहायक फार्मासिस्ट",
         description="Assists with dispensing within the limits of their registration.",
-        permissions=_VIEW_ORGANISATION,
+        permissions=(*_VIEW_ORGANISATION, *_SELL),
     ),
     SystemRole(
         code=COUNTER_STAFF,
         name_en="Counter staff",
         name_ne="काउन्टर कर्मचारी",
         description="Serves customers and takes payment at the counter.",
-        permissions=_VIEW_ORGANISATION,
+        permissions=(*_VIEW_ORGANISATION, *_SELL),
     ),
     SystemRole(
         code=STORE_KEEPER,
@@ -132,7 +171,16 @@ SYSTEM_ROLES: tuple[SystemRole, ...] = (
         name_en="Accountant",
         name_ne="लेखापाल",
         description="Handles the books, tax returns and payments.",
-        permissions=(*_VIEW_ORGANISATION, "tenancy.legal_entity.view"),
+        permissions=(
+            *_VIEW_ORGANISATION,
+            *_HANDLE_MONEY,
+            "sales.invoice.view",
+            "payments.payment.view",
+            "payments.shift.view",
+            "payments.shift.approve",
+            "payments.credit.override",
+            "tenancy.legal_entity.view",
+        ),
     ),
     SystemRole(
         code=AUDITOR,

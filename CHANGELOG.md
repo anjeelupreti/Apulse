@@ -210,3 +210,28 @@ versioning: [Semantic Versioning](https://semver.org).
   the drawer needs a witness, and what float a till opens with. Every one of them keeps the strict
   behaviour as its default and lets a pharmacy loosen it deliberately — and a sale that only went
   through because the shop chose to warn still reads as a warning afterwards.
+- The counter, over HTTP. A bill can now be started, added to, issued, reprinted, cancelled and
+  credited through the API, and bills and credit notes can be listed, searched and filtered by
+  date. The rules are unchanged and unmoved: the views translate between HTTP and a service call
+  and contain no rules of their own, so a refusal at the counter and a refusal over the wire are
+  the same refusal, arriving in the same envelope with its Nepali message.
+
+  Retries are safe. A till on a bad connection sends an `Idempotency-Key`, and the same key twice
+  issues one bill, not two — with a retry that arrives while the first attempt is still running
+  told to wait rather than allowed to race it. Keys are scoped to the account, the user and the
+  endpoint, and the request body is fingerprinted, so the same key with different content is
+  refused instead of quietly answered with the old result. Failures are deliberately not
+  remembered: a sale refused for want of a prescription has to stay retryable once the
+  prescription is there.
+
+  Editing a row now says which version it was read at, in the body or as `If-Match`, and a stale
+  edit is refused rather than silently overwriting somebody else's change.
+
+  Lists share their filters, so `updated_since` means the same thing everywhere. Branch scoping is
+  applied whether or not the caller asked for it, because leaving that to each view is how one view
+  ends up forgetting.
+
+  The built-in roles were changed to match: serving a customer now means building, issuing,
+  reprinting and taking payment, and stops short of cancelling a tax document, crediting money back
+  or putting a returned pack on the shelf. Those belong to the pharmacist in charge and the
+  accountant.

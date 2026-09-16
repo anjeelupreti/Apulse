@@ -247,6 +247,14 @@ SPECTACULAR_SETTINGS = {
     "COMPONENT_SPLIT_REQUEST": True,
     "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+",
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    # Several documents have a `status`, and they mean different things. Naming each one keeps
+    # the generated client's types readable instead of `Status172Enum`.
+    "ENUM_NAME_OVERRIDES": {
+        "InvoiceStatusEnum": "core.sales.models.InvoiceStatus.choices",
+        "CreditNoteKindEnum": "core.sales.models.CreditNoteKind.choices",
+        "ReturnReasonEnum": "core.sales.models.ReturnReason.choices",
+        "ReturnDestinationEnum": "core.sales.models.ReturnDestination.choices",
+    },
 }
 
 # ------------------------------------------------------------------ Celery
