@@ -15,6 +15,7 @@ from core.inventory.models import MovementType, StockLedgerEntry
 from core.inventory.services import receive_stock, reverse_movement
 from core.tax.services import tax_on
 from kernel.audit import services as audit
+from kernel.audit import tracking
 from kernel.audit.models import AuditAction
 from kernel.numbering.services import issue_number
 from shared.errors import DomainError
@@ -175,10 +176,11 @@ def post_receipt(
         )
         entries.append(entry)
 
-    receipt.number = issued.number
-    receipt.status = ReceiptStatus.POSTED
-    receipt.posted_at = timezone.now()
-    receipt.save(update_fields=["number", "status", "posted_at", "updated_at"])
+    with tracking.paused():
+        receipt.number = issued.number
+        receipt.status = ReceiptStatus.POSTED
+        receipt.posted_at = timezone.now()
+        receipt.save(update_fields=["number", "status", "posted_at", "updated_at"])
 
     audit.record(
         action=AuditAction.CREATE,
@@ -260,10 +262,11 @@ def cancel_receipt(receipt: GoodsReceipt, *, reason: str, actor: Any = None) -> 
     ).exclude(movement_type=MovementType.REVERSAL)
     reversals = [reverse_movement(entry, reason=reason, actor=actor) for entry in original]
 
-    receipt.status = ReceiptStatus.CANCELLED
-    receipt.cancelled_at = timezone.now()
-    receipt.cancelled_reason = reason
-    receipt.save(update_fields=["status", "cancelled_at", "cancelled_reason", "updated_at"])
+    with tracking.paused():
+        receipt.status = ReceiptStatus.CANCELLED
+        receipt.cancelled_at = timezone.now()
+        receipt.cancelled_reason = reason
+        receipt.save(update_fields=["status", "cancelled_at", "cancelled_reason", "updated_at"])
 
     audit.record(
         action=AuditAction.VOID,

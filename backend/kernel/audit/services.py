@@ -11,7 +11,7 @@ from django.db import models, transaction
 from kernel.tenancy.context import require_current_tenant_id
 
 from .context import get_context
-from .diffing import diff, snapshot
+from .diffing import comparable, diff, snapshot
 from .models import GENESIS_HASH, AuditAction, AuditChainHead, AuditEvent
 
 logger = structlog.get_logger(__name__)
@@ -67,6 +67,7 @@ def record(
     claiming the same position or both pointing at the same predecessor.
     """
     tenant_id = require_current_tenant_id()
+    actor = actor if actor is not None else _actor_from_context()
 
     if entity is not None:
         entity_type = entity_type or entity._meta.label
@@ -141,8 +142,12 @@ def record_update(
     reason: str = "",
     action: str = AuditAction.UPDATE,
 ) -> AuditEvent | None:
-    """Record a change, or nothing at all if the save changed nothing."""
-    changes = diff(before, snapshot(instance))
+    """Record a change, or nothing at all if the save changed nothing.
+
+    `before` comes from `comparable()`, not `snapshot()`: a masked field has to carry a digest or
+    a changed password compares equal to itself and the change goes unrecorded.
+    """
+    changes = diff(before, comparable(instance))
     if not changes:
         return None
     return record(action=action, actor=actor, entity=instance, changes=changes, reason=reason)
@@ -219,3 +224,16 @@ def history_for(instance: models.Model) -> models.QuerySet[AuditEvent]:
     return AuditEvent.objects.filter(
         entity_type=instance._meta.label, entity_id=str(instance.pk)
     ).order_by("-sequence")
+
+
+def _actor_from_context() -> Any:
+    """Who is acting, when the caller did not say.
+
+    A signal handler is handed a model instance and nothing else, so without this every automatic
+    entry would read "changed by nobody". An anonymous or absent user stays None rather than being
+    recorded as a user who does not exist.
+    """
+    actor = get_context().actor
+    if actor is None or not getattr(actor, "is_authenticated", False):
+        return None
+    return actor

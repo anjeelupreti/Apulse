@@ -123,3 +123,28 @@ versioning: [Semantic Versioning](https://semver.org).
   a decision somebody makes deliberately. A credit note is priced at what was charged, never at
   today's price, or a refund quietly becomes a discount. A returned narcotic goes back into the
   controlled-drug register.
+- Crediting a bill is now one click. A single call drafts the note, fills every line that has not
+  already been credited, numbers it and issues it — but only when the caller confirms, because it
+  produces a real numbered tax document and moves stock, and the only way back is another credit
+  note the other way round. What the button will credit can be read before it is pressed. The
+  invoice itself is never touched: it keeps its number, its lines and its totals, and the
+  correction stands as a separate document.
+- Nothing on an issued bill can be edited any more, including its totals. Lines were already
+  refused; recalculating the totals was not, so an issued invoice could have been silently
+  re-added-up into a figure different from the one the customer is holding. Cancelled bills are
+  closed the same way.
+- Everything leaves a trail. A model is declared as tracked once, next to the app it belongs to,
+  and from then on every create, change and delete of it is recorded automatically — prices, tax
+  rates, drug schedules, batches, prescribers, prescriptions, branches and their DDA licences,
+  bills and credit notes, including drafts that were built, altered and abandoned before anybody
+  paid. The entries that matter most are the ones nobody would have thought to add by hand.
+
+  The stock ledger and the narcotic register are deliberately left out: both already are logs,
+  append-only in the database and carrying the actor, the document and the reason, and tracking
+  them would write every scan at the counter twice.
+
+  Two faults in the older diffing came out while testing this. A decimal read back from the
+  database compared unequal to the same amount held in memory, so saving an untouched row was
+  recorded as a change; and a changed password compared equal to itself, because both sides were
+  masked before they were compared, so the one fact worth keeping — that it changed, and when —
+  was being thrown away. Both are fixed.

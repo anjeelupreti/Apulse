@@ -17,6 +17,9 @@ class AuditContext:
     ip_address: str = ""
     user_agent: str = ""
     device_id: str = ""
+    #: Who is acting. Kept here so a service deep in the stack, or a signal handler that was never
+    #: passed anything, still records a name rather than an anonymous change.
+    actor: Any = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -49,7 +52,7 @@ def reset_context(token: object) -> None:
 @contextmanager
 def audit_context(**values: Any) -> Iterator[AuditContext]:
     """Temporarily describe the caller, for background jobs and management commands."""
-    known = {"request_id", "ip_address", "user_agent", "device_id"}
+    known = {"request_id", "ip_address", "user_agent", "device_id", "actor"}
     context = AuditContext(
         **{key: value for key, value in values.items() if key in known},
         extra={key: value for key, value in values.items() if key not in known},

@@ -30,6 +30,7 @@ from core.catalog.services import to_base
 from core.inventory.models import MovementType, StockLedgerEntry
 from core.inventory.services import post_movement
 from kernel.audit import services as audit
+from kernel.audit import tracking
 from kernel.audit.models import AuditAction
 from kernel.numbering.services import issue_number
 from kernel.tenancy.models import Location
@@ -280,6 +281,8 @@ def _require_editable(credit_note: CreditNote) -> None:
 
 
 def recalculate(credit_note: CreditNote, *, rounding_step: Decimal = DEFAULT_ROUNDING_STEP) -> None:
+    """Refresh the totals from the lines. Drafts only, for the same reason an invoice is."""
+    _require_editable(credit_note)
     lines = list(credit_note.lines.all())
     amounts = [
         LineAmounts(
@@ -356,12 +359,15 @@ def issue_credit_note(
                 )
             )
 
-    recalculate(credit_note, rounding_step=rounding_step)
-    credit_note.number = issued.number
-    credit_note.fiscal_year = issued.fiscal_year
-    credit_note.status = InvoiceStatus.ISSUED
-    credit_note.issued_at = timezone.now()
-    credit_note.save(update_fields=["number", "fiscal_year", "status", "issued_at", "updated_at"])
+    with tracking.paused():
+        recalculate(credit_note, rounding_step=rounding_step)
+        credit_note.number = issued.number
+        credit_note.fiscal_year = issued.fiscal_year
+        credit_note.status = InvoiceStatus.ISSUED
+        credit_note.issued_at = timezone.now()
+        credit_note.save(
+            update_fields=["number", "fiscal_year", "status", "issued_at", "updated_at"]
+        )
 
     audit.record(
         action=AuditAction.CREATE,
@@ -444,3 +450,61 @@ def credited_amount(invoice: SalesInvoice) -> Decimal:
     return CreditNote.objects.filter(invoice=invoice, status=InvoiceStatus.ISSUED).aggregate(
         total=Sum("payable_amount")
     )["total"] or Decimal("0")
+
+
+# --------------------------------------------------------------------------- one click
+@transaction.atomic
+def credit_invoice(
+    invoice: SalesInvoice,
+    *,
+    reason: str,
+    confirmed: bool,
+    kind: str = CreditNoteKind.RETURN,
+    reason_code: str = ReturnReason.OTHER,
+    destination: str = ReturnDestination.QUARANTINE,
+    actor: Any = None,
+) -> IssuedCreditNote:
+    """Credit a whole invoice in one step: draft it, fill it, issue it, done.
+
+    This is the button on an issued bill. Everything on the invoice that has not already been
+    credited comes back, at the rates that were charged, as a new numbered document. The invoice
+    itself is not touched — it keeps its number, its lines and its totals, because the customer is
+    holding a copy of it and a bill that changes after the fact is the thing IRD's rules exist to
+    prevent.
+
+    `confirmed` has to be passed as True. It is not a formality: this issues a real numbered tax
+    document and moves stock, and there is no undoing it — the only way back is another credit
+    note the other way round. The counter should have said out loud what is about to happen.
+    """
+    if not confirmed:
+        raise DomainError(errors.CREDIT_NOTE_NEEDS_CONFIRMATION)
+
+    remaining = outstanding_quantity(invoice)
+    if not remaining:
+        raise DomainError(
+            errors.INVOICE_ALREADY_FULLY_CREDITED,
+            f"Everything on {invoice.number} has already been credited.",
+        )
+
+    return credit_whole_invoice(
+        invoice,
+        reason=reason,
+        kind=kind,
+        reason_code=reason_code,
+        destination=destination,
+        actor=actor,
+    )
+
+
+def outstanding_quantity(invoice: SalesInvoice) -> dict[Any, Decimal]:
+    """What is left to credit on each line. Empty when the whole bill has been credited.
+
+    What the button reads before it is pressed, so the counter can be shown what will come back
+    rather than finding out afterwards.
+    """
+    remaining: dict[Any, Decimal] = {}
+    for line in invoice.lines.all():
+        left = creditable_quantity(line)
+        if left > 0:
+            remaining[line.pk] = left
+    return remaining

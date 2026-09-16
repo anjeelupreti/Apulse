@@ -18,6 +18,7 @@ class AuditContextMiddleware:
                 ip_address=request.META.get("REMOTE_ADDR", "") or "",
                 user_agent=request.headers.get("User-Agent", "")[:400],
                 device_id=request.headers.get("X-Device-Id", "")[:64],
+                actor=getattr(request, "user", None),
             )
         )
         try:

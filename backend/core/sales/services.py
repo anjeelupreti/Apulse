@@ -15,6 +15,7 @@ from core.catalog.services import to_base, validate_quantity
 from core.inventory.models import MovementType, StockBalance, StockLedgerEntry
 from core.inventory.services import allocate_fefo, post_movement, reverse_movement
 from kernel.audit import services as audit
+from kernel.audit import tracking
 from kernel.audit.models import AuditAction
 from kernel.numbering.services import issue_number
 from shared.errors import DomainError
@@ -187,7 +188,13 @@ def _require_editable(invoice: SalesInvoice) -> None:
 
 
 def recalculate(invoice: SalesInvoice, *, rounding_step: Decimal = DEFAULT_ROUNDING_STEP) -> None:
-    """Refresh the invoice totals from its lines, without issuing it."""
+    """Refresh the invoice totals from its lines, without issuing it.
+
+    Drafts only. An issued invoice is in the customer's hand, and rewriting its total — even to a
+    figure the lines agree with — would leave our copy and theirs saying different things. Issuing
+    calls this while the invoice is still a draft, which is the last moment the totals may move.
+    """
+    _require_editable(invoice)
     lines = list(invoice.lines.all())
     amounts = [
         LineAmounts(
@@ -281,12 +288,15 @@ def issue_invoice(
                 )
             )
 
-    recalculate(invoice, rounding_step=rounding_step)
-    invoice.number = issued.number
-    invoice.fiscal_year = issued.fiscal_year
-    invoice.status = InvoiceStatus.ISSUED
-    invoice.issued_at = timezone.now()
-    invoice.save(update_fields=["number", "fiscal_year", "status", "issued_at", "updated_at"])
+    # Paused because the entry recorded just below says it better: "INV-001 issued, 1,240.00"
+    # rather than six rows of fields moving. The trail gains nothing from both.
+    with tracking.paused():
+        recalculate(invoice, rounding_step=rounding_step)
+        invoice.number = issued.number
+        invoice.fiscal_year = issued.fiscal_year
+        invoice.status = InvoiceStatus.ISSUED
+        invoice.issued_at = timezone.now()
+        invoice.save(update_fields=["number", "fiscal_year", "status", "issued_at", "updated_at"])
 
     audit.record(
         action=AuditAction.CREATE,
@@ -356,10 +366,11 @@ def cancel_invoice(invoice: SalesInvoice, *, reason: str, actor: Any = None) -> 
     ).exclude(movement_type=MovementType.REVERSAL)
     reversals = [reverse_movement(entry, reason=reason, actor=actor) for entry in original]
 
-    invoice.status = InvoiceStatus.CANCELLED
-    invoice.cancelled_at = timezone.now()
-    invoice.cancelled_reason = reason
-    invoice.save(update_fields=["status", "cancelled_at", "cancelled_reason", "updated_at"])
+    with tracking.paused():
+        invoice.status = InvoiceStatus.CANCELLED
+        invoice.cancelled_at = timezone.now()
+        invoice.cancelled_reason = reason
+        invoice.save(update_fields=["status", "cancelled_at", "cancelled_reason", "updated_at"])
 
     audit.record(
         action=AuditAction.VOID,

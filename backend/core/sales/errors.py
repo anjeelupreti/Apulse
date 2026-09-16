@@ -80,3 +80,15 @@ INVOICE_ALREADY_PARTLY_CREDITED = register(
     "Part of this bill has already been credited. Credit the rest instead of cancelling it.",
     "यो बीजकको केही अंश पहिले नै क्रेडिट भइसकेको छ। रद्द गर्नुको सट्टा बाँकी अंश क्रेडिट गर्नुहोस्।",
 )
+CREDIT_NOTE_NEEDS_CONFIRMATION = register(
+    "CREDIT_NOTE_NEEDS_CONFIRMATION",
+    400,
+    "Confirm the credit note before it is issued. It cannot be undone.",
+    "क्रेडिट नोट जारी गर्नुअघि पुष्टि गर्नुहोस्। यो फिर्ता लिन मिल्दैन।",
+)
+INVOICE_ALREADY_FULLY_CREDITED = register(
+    "INVOICE_ALREADY_FULLY_CREDITED",
+    409,
+    "Everything on this bill has already been credited.",
+    "यो बीजकको सबै रकम पहिले नै क्रेडिट भइसकेको छ।",
+)

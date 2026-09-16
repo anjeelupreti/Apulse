@@ -91,12 +91,14 @@ def rule_for(schedule: str, *, on_date: date) -> ScheduleRule | None:
 def classify(profile: MedicineProfile, schedule: str, *, reason: str = "") -> MedicineProfile:
     """Set a medicine's drug group."""
     from kernel.audit import services as audit
+    from kernel.audit import tracking
     from kernel.audit.models import AuditAction
 
     previous = profile.schedule
-    profile.schedule = schedule
-    profile.is_narcotic = schedule == DrugSchedule.KA
-    profile.save(update_fields=["schedule", "is_narcotic", "updated_at"])
+    with tracking.paused():
+        profile.schedule = schedule
+        profile.is_narcotic = schedule == DrugSchedule.KA
+        profile.save(update_fields=["schedule", "is_narcotic", "updated_at"])
 
     audit.record(
         action=AuditAction.UPDATE,

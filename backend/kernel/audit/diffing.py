@@ -1,5 +1,6 @@
 """Turning model changes into something readable years later."""
 
+import hashlib
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
@@ -29,17 +30,55 @@ def jsonable(value: Any) -> Any:
     return str(value)
 
 
+def _field_value(instance: models.Model, field: models.Field[Any, Any]) -> Any:
+    """One field, shaped the way the database holds it.
+
+    A decimal is quantized to the column's scale. Without that, an amount set in memory as
+    `Decimal("50000")` and the same amount read back as `Decimal("50000.0000")` look like
+    different values, and every subsequent save of an untouched row would be recorded as a change.
+    """
+    raw = getattr(instance, field.attname, None)
+    if isinstance(raw, Decimal) and isinstance(field, models.DecimalField):
+        places = field.decimal_places or 0
+        return raw.quantize(Decimal(1).scaleb(-places))
+    return raw
+
+
 def snapshot(instance: models.Model) -> dict[str, Any]:
-    """Field values of an instance, with secrets masked.
+    """Field values of an instance, with secrets masked. This is the form that gets stored.
 
     Uses `attname`, so a foreign key is recorded as the id it points at rather than triggering a
     query for the related object.
     """
+    return {
+        field.name: MASK if is_sensitive(field.name) else jsonable(_field_value(instance, field))
+        for field in instance._meta.concrete_fields
+    }
+
+
+def fingerprint(value: Any) -> str:
+    """A short digest, so a secret can be compared without being stored.
+
+    Not reversible and not a password hash — it exists only so that "this changed" is answerable
+    for a field whose value must never be written into the trail.
+    """
+    return hashlib.sha256(repr(value).encode()).hexdigest()[:16]
+
+
+def comparable(instance: models.Model) -> dict[str, Any]:
+    """The form to compare two versions of a row with.
+
+    Identical to `snapshot` except that a masked field carries a digest of its value. Without it
+    both sides of a password change read `***`, they compare equal, and the one fact the trail is
+    supposed to keep — that it changed, and when — is lost.
+    """
     values: dict[str, Any] = {}
     for field in instance._meta.concrete_fields:
-        name = field.name
-        raw = getattr(instance, field.attname, None)
-        values[name] = MASK if is_sensitive(name) else jsonable(raw)
+        raw = _field_value(instance, field)
+        if is_sensitive(field.name):
+            values[field.name] = f"{MASK}{fingerprint(raw)}"
+        else:
+            values[field.name] = jsonable(raw)
     return values
 
 

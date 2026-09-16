@@ -31,4 +31,13 @@ class PharmacyConfig(AppConfig):
         purchasing.register_posted_hook(register.record_receipt)
         purchasing.register_cancelled_hook(register.record_receipt_cancellation)
 
+        from kernel.audit.tracking import track
+
+        from .models import MedicineProfile, Prescription, ScheduleRule
+
+        # Not the register: it is append-only in the database and is its own log. These three are
+        # edited, and a drug schedule quietly changing is the change that matters most here.
+        for model in (MedicineProfile, Prescription, ScheduleRule):
+            track(model)
+
         post_migrate.connect(sync_after_migrate, sender=self)
