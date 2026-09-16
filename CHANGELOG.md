@@ -45,3 +45,9 @@ versioning: [Semantic Versioning](https://semver.org).
   give a kill switch and staged rollouts. Account limits, such as how many branches a plan
   includes, are enforced in the service layer, so the ceiling holds however a branch is created.
   `/api/v1/me/context` now returns the account's features and limits alongside its permissions.
+- Bikram Sambat: conversion between BS and Gregorian dates, Nepal's Shrawan-to-Ashadh fiscal year,
+  and validators that check a calendar table before it is trusted. No calendar table ships with the
+  code: the month lengths are published rather than calculated, and one wrong day would shift the
+  date on every later invoice. Supply a verified table and check it with `validate_bs_calendar`.
+- Nepali number formatting: 1,00,000 rather than 100,000, Devanagari numerals, rupee amounts, and
+  totals written in words using lakh and crore, as a tax invoice requires.

@@ -338,9 +338,9 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 ## M2.6 Settings, numbering, calendar, localization
 - [ ] P0 Settings service with scopes (platform default → plan default → tenant → legal entity → branch → user) and typed access
 - [ ] P0 **Numbering Service**: series per (legal entity/branch, document type, fiscal year, optional device); pattern tokens (`{BRANCH}`, `{FY}`, `{BS_YYYY}`, `{SEQ:6}`); gapless via row-lock counter table; device range leasing; FY auto-rollover; preview; audit; manual reset forbidden after first use
-- [ ] P0 Fiscal year model (BS-based, Shrawan 1 – Ashadh end), period list (BS months), period locks
-- [ ] P0 BS/AD everywhere: date pickers with BS calendar & AD toggle, display preference per user, API always ISO AD + optional `_bs` fields in responses
-- [ ] P0 Number formatting: Nepali lakh/crore grouping (1,00,000), Devanagari numerals option, currency NPR `रू`
+- [~] P0 Fiscal year (BS-based, Shrawan 1 – Ashadh end): **`FiscalYear` with `2082/83` and `8283` labels, correct month-to-year attribution, and Gregorian bounds** — the stored period list and period locks arrive with accounting (M4.10)
+- [~] P0 **Bikram Sambat engine: conversion both ways, a table loader, and validators** (month lengths 29–32, years 365–366, consecutive years, and a new-year drift check that catches accumulated errors). **No table is bundled on purpose** — the month lengths are published, not computed, and one wrong day shifts invoice dates and fiscal years. Supply a verified table via `BACKEND_BS_CALENDAR_FILE`; check it with `manage.py validate_bs_calendar` (CR-CAL-01). *Date pickers, per-user display preference and `_bs` fields in API responses still to come*
+- [x] P0 Number formatting: South Asian grouping (1,00,000 not 100,000), Devanagari numerals, NPR with `रू`, half-up money rounding, and **amount-in-words in lakh and crore for tax invoices** — *Nepali wording needs a native reviewer before it is written*
 - [ ] P0 Translations workflow: key files per module, translator-friendly export/import (XLSX/PO), missing-translation report
 - [ ] P1 Nepali typing aids: Romanized → Devanagari input (Nepali unicode transliteration) in name fields; Preeti → Unicode converter for imports
 - [ ] P1 Public holidays calendar (Nepal) per fiscal year — used by reminders, SLAs, reports

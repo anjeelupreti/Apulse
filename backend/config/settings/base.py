@@ -180,6 +180,11 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ["X-Request-ID", "Retry-After"]
 CSRF_TRUSTED_ORIGINS = env.list("BACKEND_CSRF_TRUSTED_ORIGINS", default=[])
 
+# ------------------------------------------------------------------ Bikram Sambat
+# Path to a verified BS calendar table (see COMPLIANCE_REGISTER CR-CAL-01). Nothing is bundled:
+# a month length one day out shifts invoice dates and can move a sale into the wrong fiscal year.
+BS_CALENDAR_FILE = env.str("BACKEND_BS_CALENDAR_FILE", default="")
+
 # ------------------------------------------------------------------ tenancy
 # Tenants are addressed as {slug}.{TENANT_BASE_DOMAIN}, or by a verified custom domain.
 TENANT_BASE_DOMAIN = env.str("BACKEND_TENANT_BASE_DOMAIN", default="")

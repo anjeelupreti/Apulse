@@ -25,3 +25,21 @@ class FoundationConfig(AppConfig):
             generics.GenericAPIView,
             viewsets.GenericViewSet,
         )
+        _load_bs_calendar()
+
+
+def _load_bs_calendar() -> None:
+    """Load the Bikram Sambat table named by settings, if one is configured.
+
+    A malformed table stops the process rather than being skipped: running without BS dates is a
+    visible failure, whereas running with wrong ones puts wrong dates on tax invoices.
+    """
+    from django.conf import settings
+
+    path = getattr(settings, "BS_CALENDAR_FILE", "")
+    if not path:
+        return
+
+    from shared.nepali_calendar import load_table, load_table_from_json
+
+    load_table(load_table_from_json(path))
