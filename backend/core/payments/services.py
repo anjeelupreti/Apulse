@@ -14,6 +14,7 @@ from django.utils import timezone
 from kernel.audit import services as audit
 from kernel.audit import tracking
 from kernel.audit.models import AuditAction
+from kernel.settings import services as settings
 from shared.errors import DomainError
 from shared.formatting import quantize_money
 
@@ -121,7 +122,7 @@ def open_shift(
     branch: Any,
     location: Any,
     cashier: Any,
-    opening_float: Decimal | int | str = Decimal("0"),
+    opening_float: Decimal | int | str | None = None,
     business_date: date | None = None,
     note: str = "",
 ) -> CashierShift:
@@ -129,9 +130,15 @@ def open_shift(
 
     One open shift per counter, enforced by the database. Two people working one drawer means a
     shortfall belongs to both of them, which in practice means neither is ever asked about it.
+
+    The float falls back to whatever this branch normally starts with, so the usual case is one
+    button and the unusual one is still typed in.
     """
     if CashierShift.objects.filter(location=location, status=ShiftStatus.OPEN).exists():
         raise DomainError(errors.SHIFT_ALREADY_OPEN)
+
+    if opening_float is None:
+        opening_float = settings.get_decimal("payments.default_opening_float", branch=branch)
 
     shift = cast(
         "CashierShift",
@@ -213,6 +220,7 @@ def record_payment(
             party,
             amount=due,
             on_date=received_on or timezone.localdate(),
+            branch=branch,
             override_reason=override_reason,
             override_by=override_by or actor,
         )
@@ -527,7 +535,8 @@ def record_cash_movement(
         raise DomainError(errors.PAYMENT_MUST_BE_POSITIVE)
     if not reason.strip():
         raise DomainError(errors.CASH_MOVEMENT_NEEDS_A_REASON)
-    if moved < 0 and not witness_name.strip():
+    needs_witness = settings.get_bool("payments.require_witness_for_cash_out", branch=shift.branch)
+    if moved < 0 and needs_witness and not witness_name.strip():
         raise DomainError(errors.CASH_OUT_NEEDS_A_WITNESS)
     _require_open(shift)
 
@@ -652,8 +661,9 @@ def close_shift(
     summary = summarise(shift)
     counted = count_total(counts)
     variance = counted - summary.expected_cash
+    tolerance = settings.get_decimal("payments.till_variance_tolerance", branch=shift.branch)
 
-    if needs_explanation(variance) and not variance_reason.strip():
+    if needs_explanation(variance, tolerance=tolerance) and not variance_reason.strip():
         raise DomainError(
             errors.VARIANCE_NEEDS_AN_EXPLANATION,
             f"The drawer is {'over' if variance > 0 else 'short'} by {abs(variance)}.",

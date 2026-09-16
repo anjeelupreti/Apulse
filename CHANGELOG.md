@@ -194,3 +194,19 @@ versioning: [Semantic Versioning](https://semver.org).
   credits, a running balance, ordered by business date — and an ageing split, because every
   collections conversation is "30,000 of it has been sitting since Ashadh" rather than "they owe
   40,000".
+- Settings. A setting is declared in code — its type, its default, what it is called in both
+  languages, and which scopes it may be set at — and reading a key nobody declared raises rather
+  than shrugging, because a typo that silently answers "not set" is how a rule quietly stops being
+  enforced. A rounding rule belongs to the business, not to whoever happens to be on the till, so
+  a setting says where it may be set and refuses the rest.
+
+  Values can be set for the whole account, one business, one branch or one user, and the narrowest
+  one wins. The platform default is the default declared in code, which means a release that
+  improves a default improves it for everyone who never overrode it.
+
+  The first settings are the ones that were hard-coded a day ago: whether going over a credit
+  limit blocks the sale or merely warns, whether overdue bills block it, how many days of grace a
+  customer gets, how far a till may be out before somebody has to explain it, whether cash leaving
+  the drawer needs a witness, and what float a till opens with. Every one of them keeps the strict
+  behaviour as its default and lets a pharmacy loosen it deliberately — and a sale that only went
+  through because the shop chose to warn still reads as a warning afterwards.

@@ -31,8 +31,8 @@ def unknown_values(counts: Mapping[int, int]) -> tuple[int, ...]:
     return tuple(sorted(value for value in counts if not is_valid(value)))
 
 
-def needs_explanation(variance: Decimal) -> bool:
-    return abs(variance) > VARIANCE_TOLERANCE
+def needs_explanation(variance: Decimal, *, tolerance: Decimal | None = None) -> bool:
+    return abs(variance) > (VARIANCE_TOLERANCE if tolerance is None else tolerance)
 
 
 def break_down(amount: Decimal | int) -> dict[int, int]:

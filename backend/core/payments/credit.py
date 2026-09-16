@@ -46,7 +46,13 @@ class CreditDecision:
     requested: Decimal
     overdue_amount: Decimal
     oldest_overdue_days: int
+    #: Why it was refused, or — when the pharmacy chose to warn rather than block — what was wrong
+    #: with it anyway. A sale that went through on a warning should still read as one afterwards.
     reason: str = ""
+
+    @property
+    def is_warning(self) -> bool:
+        return self.allowed and bool(self.reason)
 
     @property
     def headroom(self) -> Decimal:
@@ -58,17 +64,33 @@ class CreditDecision:
 
 
 def assess(
-    party: Any, *, amount: Decimal | int | str, on_date: date | None = None
+    party: Any,
+    *,
+    amount: Decimal | int | str,
+    on_date: date | None = None,
+    branch: Any = None,
 ) -> CreditDecision:
-    """Look at the customer's position without changing anything."""
+    """Look at the customer's position without changing anything.
+
+    Whether a breach blocks the sale or merely warns is the pharmacy's call, not ours. A shop
+    supplying two hospitals on 60-day terms may reasonably choose to warn; one selling to walk-in
+    families should not, and the default is to block either way.
+    """
+    from kernel.settings import services as settings
+
     on_date = on_date or timezone.localdate()
     requested = quantize_money(amount)
     limit = quantize_money(party.credit_limit)
     exposure = outstanding_for(party)
-    overdue = overdue_for(party, as_of=on_date)
-    oldest = oldest_overdue_days(party, as_of=on_date)
+    grace = settings.get_int("payments.overdue_grace_days", branch=branch)
+    overdue = overdue_for(party, as_of=on_date, grace_days=grace)
+    oldest = oldest_overdue_days(party, as_of=on_date, grace_days=grace)
+    over_limit_blocks = settings.get_str("payments.over_limit_behaviour", branch=branch) == "block"
+    overdue_blocks = settings.get_str("payments.overdue_behaviour", branch=branch) == "block"
 
     if limit <= 0:
+        # No limit set means no credit, never unlimited. Not a setting: defaulting the other way
+        # would hand every walk-in an open account the first time somebody forgot to fill it in.
         return CreditDecision(
             allowed=False,
             limit=limit,
@@ -78,7 +100,7 @@ def assess(
             oldest_overdue_days=oldest,
             reason=f"{party.name} has no credit limit set.",
         )
-    if overdue > 0:
+    if overdue > 0 and overdue_blocks:
         return CreditDecision(
             allowed=False,
             limit=limit,
@@ -88,7 +110,7 @@ def assess(
             oldest_overdue_days=oldest,
             reason=f"{party.name} has {overdue} overdue, the oldest by {oldest} days.",
         )
-    if exposure + requested > limit:
+    if exposure + requested > limit and over_limit_blocks:
         return CreditDecision(
             allowed=False,
             limit=limit,
@@ -101,6 +123,14 @@ def assess(
                 f"this would put them {quantize_money(exposure + requested - limit)} over."
             ),
         )
+
+    # Allowed, but say so if it is only allowed because the pharmacy chose to warn rather than
+    # block. A sale that went through on a warning should still read as one afterwards.
+    warnings = []
+    if overdue > 0:
+        warnings.append(f"{overdue} overdue, the oldest by {oldest} days")
+    if exposure + requested > limit:
+        warnings.append(f"{quantize_money(exposure + requested - limit)} over the limit")
     return CreditDecision(
         allowed=True,
         limit=limit,
@@ -108,6 +138,7 @@ def assess(
         requested=requested,
         overdue_amount=overdue,
         oldest_overdue_days=oldest,
+        reason=f"{party.name}: {'; '.join(warnings)}" if warnings else "",
     )
 
 
@@ -116,6 +147,7 @@ def enforce(
     *,
     amount: Decimal | int | str,
     on_date: date | None = None,
+    branch: Any = None,
     override_reason: str = "",
     override_by: Any = None,
 ) -> CreditDecision:
@@ -128,8 +160,10 @@ def enforce(
     if party is None:
         raise DomainError(errors.CREDIT_NEEDS_A_NAMED_CUSTOMER)
 
-    decision = assess(party, amount=amount, on_date=on_date)
+    decision = assess(party, amount=amount, on_date=on_date, branch=branch)
     if decision.allowed:
+        if decision.is_warning:
+            logger.warning("credit_warning", party=party.name, detail=decision.reason)
         return decision
 
     if not override_reason.strip():
@@ -208,7 +242,12 @@ def due_date_for(invoice: Any, *, party: Any = None) -> date:
     return cast("date", invoice.invoice_date) + timedelta(days=days)
 
 
-def overdue_for(party: Any, *, as_of: date | None = None) -> Decimal:
+def overdue_for(party: Any, *, as_of: date | None = None, grace_days: int = 0) -> Decimal:
+    """What is past its due date, allowing whatever grace the pharmacy grants.
+
+    A customer who pays on the 31st of a 30-day arrangement is not a credit risk, and stopping
+    them at the counter over one day costs more than it saves.
+    """
     from core.payments.services import amount_outstanding
 
     as_of = as_of or timezone.localdate()
@@ -216,19 +255,23 @@ def overdue_for(party: Any, *, as_of: date | None = None) -> Decimal:
         (
             amount_outstanding(invoice)
             for invoice in open_invoices(party)
-            if due_date_for(invoice, party=party) < as_of
+            if _is_overdue(invoice, party, as_of, grace_days)
         ),
         start=Decimal("0.00"),
     )
     return quantize_money(total)
 
 
-def oldest_overdue_days(party: Any, *, as_of: date | None = None) -> int:
+def _is_overdue(invoice: Any, party: Any, as_of: date, grace_days: int) -> bool:
+    return due_date_for(invoice, party=party) + timedelta(days=grace_days) < as_of
+
+
+def oldest_overdue_days(party: Any, *, as_of: date | None = None, grace_days: int = 0) -> int:
     as_of = as_of or timezone.localdate()
     overdue = [
         (as_of - due_date_for(invoice, party=party)).days
         for invoice in open_invoices(party)
-        if due_date_for(invoice, party=party) < as_of
+        if _is_overdue(invoice, party, as_of, grace_days)
     ]
     return max(overdue) if overdue else 0
 
