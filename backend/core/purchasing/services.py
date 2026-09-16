@@ -22,6 +22,7 @@ from shared.errors import DomainError
 from . import errors
 from .costing import LineCosting, allocate_freight, cost_line, quantize_cost
 from .document_types import GOODS_RECEIPT
+from .extensions import run_cancelled_hooks, run_posted_hooks
 from .models import GoodsReceipt, GoodsReceiptLine, ReceiptStatus
 
 logger = structlog.get_logger(__name__)
@@ -187,6 +188,10 @@ def post_receipt(
         changes={"status": {"from": ReceiptStatus.DRAFT, "to": ReceiptStatus.POSTED}},
         branch=receipt.branch,
     )
+    # The pharmacy module writes the narcotic register here. A register that only records what
+    # left the cabinet cannot be reconciled against what is in it.
+    run_posted_hooks(receipt, entries=entries, actor=actor)
+
     logger.info(
         "goods_receipt_posted",
         number=issued.number,
@@ -250,11 +255,10 @@ def cancel_receipt(receipt: GoodsReceipt, *, reason: str, actor: Any = None) -> 
     if receipt.status != ReceiptStatus.POSTED:
         raise DomainError(errors.RECEIPT_NOT_EDITABLE, "Only a posted receipt can be cancelled.")
 
-    entries = StockLedgerEntry.objects.filter(
+    original = StockLedgerEntry.objects.filter(
         document_type=GOODS_RECEIPT, document_id=str(receipt.pk)
     ).exclude(movement_type=MovementType.REVERSAL)
-    for entry in entries:
-        reverse_movement(entry, reason=reason, actor=actor)
+    reversals = [reverse_movement(entry, reason=reason, actor=actor) for entry in original]
 
     receipt.status = ReceiptStatus.CANCELLED
     receipt.cancelled_at = timezone.now()
@@ -270,4 +274,6 @@ def cancel_receipt(receipt: GoodsReceipt, *, reason: str, actor: Any = None) -> 
         reason=reason,
         branch=receipt.branch,
     )
+
+    run_cancelled_hooks(receipt, reason=reason, actor=actor, entries=reversals)
     return receipt

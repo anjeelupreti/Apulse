@@ -1,7 +1,9 @@
 """Medicines, the rules that govern them, and the prescriptions they are dispensed against."""
 
 from datetime import date, timedelta
+from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -180,3 +182,151 @@ class Prescription(TenantScopedModel):
 
     def default_validity(self, *, days: int = 90) -> date:
         return self.prescribed_on + timedelta(days=days)
+
+
+class RegisterEntryType(models.TextChoices):
+    """Why a controlled drug moved. Mirrors what a paper register's columns say."""
+
+    OPENING = "opening", _("Opening balance")
+    RECEIPT = "receipt", _("Received from supplier")
+    DISPENSED = "dispensed", _("Dispensed to a patient")
+    RETURN_IN = "return_in", _("Returned by a patient")
+    RETURN_OUT = "return_out", _("Returned to supplier")
+    DESTROYED = "destroyed", _("Destroyed or written off")
+    ADJUSTMENT = "adjustment", _("Adjustment after a physical count")
+    CORRECTION = "correction", _("Correction of an earlier entry")
+
+
+class NarcoticRegisterEntry(TenantScopedModel):
+    """One line of the controlled-drug register. Append-only: see migration 0004.
+
+    The Narcotic Drugs (Control) Act, 2033 requires a seller to keep records in a prescribed
+    format with the doctor's prescription attached. The prescribed format itself is still to be
+    obtained — CR-DDA-02 — so the columns here are what the Act and DDA practice imply rather than
+    a transcription of the official page. Changing a column later is a migration; losing a
+    movement is not recoverable, so everything a register page could need is captured now.
+
+    Names are **copied in as text** as well as linked. A register page has to read a year later
+    exactly as it read on the day, and a practitioner record that is corrected in 2027 must not
+    quietly rewrite what a 2026 page says.
+
+    Nothing here is ever edited. A mistake is corrected by a `CORRECTION` entry that points at
+    what it corrects and says why — which is how a paper register is corrected too, with the
+    original still legible under the line through it.
+    """
+
+    branch = models.ForeignKey("tenancy.Branch", on_delete=models.PROTECT, related_name="+")
+    location = models.ForeignKey(
+        "tenancy.Location", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    item = models.ForeignKey("catalog.Item", on_delete=models.PROTECT, related_name="+")
+    batch = models.ForeignKey(
+        "inventory.Batch", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+
+    entry_type = models.CharField(max_length=20, choices=RegisterEntryType.choices, db_index=True)
+    #: Signed, in the item's base units. Positive into the cabinet, negative out of it.
+    quantity = models.DecimalField(max_digits=18, decimal_places=3)
+    #: The running balance after this entry, for this branch, item and batch. Stored rather than
+    #: derived: a register page is read as a column of balances, and a page that recomputes itself
+    #: differently each time it is printed is not evidence of anything.
+    balance_after = models.DecimalField(max_digits=18, decimal_places=3)
+
+    occurred_on = models.DateField(help_text=_("The business date, which may not be today."))
+
+    # --- the patient side
+    patient_name = models.CharField(max_length=200, blank=True)
+    patient_address = models.CharField(max_length=300, blank=True)
+    patient_identity_number = models.CharField(
+        max_length=60, blank=True, help_text=_("Citizenship or other identity document shown.")
+    )
+    prescription = models.ForeignKey(
+        Prescription,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="register_entries",
+    )
+    prescriber = models.ForeignKey(
+        "practitioners.Practitioner",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    prescriber_name = models.CharField(max_length=200, blank=True)
+    prescriber_registration_number = models.CharField(max_length=60, blank=True)
+
+    # --- the supplier side
+    supplier_name = models.CharField(max_length=200, blank=True)
+    supplier_invoice_number = models.CharField(max_length=60, blank=True)
+
+    # --- who did it
+    dispensed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    dispensed_by_name = models.CharField(max_length=200, blank=True)
+    dispensed_by_registration_number = models.CharField(
+        max_length=60, blank=True, help_text=_("The pharmacist's council registration.")
+    )
+    witness_name = models.CharField(
+        max_length=200, blank=True, help_text=_("Required for destruction and adjustments.")
+    )
+    #: Where the signature image or the scanned prescription lives. A real file reference with M2.7.
+    signature_reference = models.CharField(max_length=300, blank=True)
+
+    # --- what caused it
+    document_type = models.CharField(max_length=60, blank=True)
+    document_id = models.CharField(max_length=64, blank=True)
+    document_number = models.CharField(max_length=60, blank=True)
+    corrects = models.ForeignKey(
+        "self", on_delete=models.PROTECT, null=True, blank=True, related_name="corrected_by"
+    )
+    reason = models.CharField(max_length=300, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        verbose_name_plural = "narcotic register entries"
+        ordering = ["occurred_on", "created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "branch", "item", "occurred_on"]),
+            models.Index(fields=["tenant", "item", "batch"]),
+            models.Index(fields=["tenant", "document_type", "document_id"]),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(quantity=0), name="pharmacy_register_entry_is_not_zero"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_entry_type_display()} {self.quantity} on {self.occurred_on}"
+
+
+class NarcoticRegisterBalance(TenantScopedModel):
+    """What the register says should be in the cabinet, per branch, drug and batch.
+
+    A running total kept so the next entry does not have to add up the whole register. The entries
+    are the truth; `reconcile_register()` reports any disagreement rather than correcting it,
+    because a balance that drifted means something wrote to the register outside this module.
+    """
+
+    branch = models.ForeignKey("tenancy.Branch", on_delete=models.PROTECT, related_name="+")
+    item = models.ForeignKey("catalog.Item", on_delete=models.PROTECT, related_name="+")
+    batch = models.ForeignKey(
+        "inventory.Batch", on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    quantity = models.DecimalField(max_digits=18, decimal_places=3, default=Decimal("0"))
+
+    class Meta:
+        ordering = ["item", "batch"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "branch", "item", "batch"],
+                name="pharmacy_one_register_balance_per_batch",
+                nulls_distinct=False,
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.quantity} of {self.item_id} at {self.branch_id}"

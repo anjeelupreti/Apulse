@@ -22,6 +22,7 @@ from shared.formatting import amount_in_words_en
 
 from . import errors
 from .document_types import SALES_INVOICE
+from .extensions import run_cancelled_hooks, run_issue_validators, run_issued_hooks
 from .models import (
     InvoiceStatus,
     SalesInvoice,
@@ -29,7 +30,6 @@ from .models import (
     SalesInvoiceLineBatch,
 )
 from .totals import DEFAULT_ROUNDING_STEP, LineAmounts, compute_line, compute_totals
-from .validators import run_issue_validators
 
 logger = structlog.get_logger(__name__)
 
@@ -296,6 +296,11 @@ def issue_invoice(
         changes={"status": {"from": InvoiceStatus.DRAFT, "to": InvoiceStatus.ISSUED}},
         branch=invoice.branch,
     )
+    # Modules record what the sale obliges them to record — the pharmacy module writes the
+    # narcotic register. Inside this transaction on purpose: a controlled drug that left the shelf
+    # without its register entry is exactly what the register exists to prevent.
+    run_issued_hooks(invoice, entries=entries, actor=actor)
+
     logger.info(
         "invoice_issued",
         number=issued.number,
@@ -336,11 +341,10 @@ def cancel_invoice(invoice: SalesInvoice, *, reason: str, actor: Any = None) -> 
     if invoice.status != InvoiceStatus.ISSUED:
         raise DomainError(errors.INVOICE_NOT_EDITABLE, "Only an issued invoice can be cancelled.")
 
-    entries = StockLedgerEntry.objects.filter(
+    original = StockLedgerEntry.objects.filter(
         document_type=SALES_INVOICE, document_id=str(invoice.pk)
     ).exclude(movement_type=MovementType.REVERSAL)
-    for entry in entries:
-        reverse_movement(entry, reason=reason, actor=actor)
+    reversals = [reverse_movement(entry, reason=reason, actor=actor) for entry in original]
 
     invoice.status = InvoiceStatus.CANCELLED
     invoice.cancelled_at = timezone.now()
@@ -356,6 +360,8 @@ def cancel_invoice(invoice: SalesInvoice, *, reason: str, actor: Any = None) -> 
         reason=reason,
         branch=invoice.branch,
     )
+
+    run_cancelled_hooks(invoice, reason=reason, actor=actor, entries=reversals)
     return invoice
 
 

@@ -16,10 +16,18 @@ class PharmacyConfig(AppConfig):
     verbose_name = "Pharmacy"
 
     def ready(self) -> Any:
-        from core.sales.validators import register_issue_validator
+        from core.purchasing import extensions as purchasing
+        from core.sales import extensions as sales
 
+        from . import register
         from .dispensing import refuse_unprescribed_medicines
 
-        # Core knows nothing about drug schedules; it just runs whatever checks are registered.
-        register_issue_validator(refuse_unprescribed_medicines)
+        # Core knows nothing about drug schedules or narcotics registers; it just runs whatever
+        # has been registered against the points it offers.
+        sales.register_issue_validator(refuse_unprescribed_medicines)
+        sales.register_issued_hook(register.record_dispensing)
+        sales.register_cancelled_hook(register.record_sale_cancellation)
+        purchasing.register_posted_hook(register.record_receipt)
+        purchasing.register_cancelled_hook(register.record_receipt_cancellation)
+
         post_migrate.connect(sync_after_migrate, sender=self)

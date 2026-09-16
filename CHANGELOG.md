@@ -93,3 +93,20 @@ versioning: [Semantic Versioning](https://semver.org).
   check runs before the invoice number is taken, so a refused sale leaves no gap in the numbering.
   The counter can ask a bill what it still needs while it is being built. The seeded rules are
   marked unverified: the official group lists are still to be confirmed against the Act (CR-DDA-01).
+- The controlled-drug register. Every narcotic that enters or leaves the cabinet is written down
+  as it moves: the date, the patient, the prescriber and their registration number, the drug, the
+  batch, the quantity, the running balance and the pharmacist who handed it over. Names are copied
+  in as well as linked, so a page reads a year later exactly as it read on the day. Which समूह is
+  registered comes from the dated rule rather than a list in the code, so a notice bringing another
+  group in applies from its own date.
+
+  The database refuses to change or delete a line. A mistake is corrected by a new line pointing
+  at the old one, and the correction needs a reason — an unexplained correction in a narcotics
+  register is worse than the error it corrects. Controlled stock must be put away in a locked
+  cabinet, checked when it is received. Only a registered pharmacist may hand it over. A count of
+  the cabinet needs a witness and records only the difference it found, and it has to say which
+  batch it counted. The register is written inside the same transaction as the sale, so a
+  controlled drug can never leave the shelf without its entry.
+
+  The register the Act prescribes has a format, and that format is still to be obtained
+  (CR-DDA-02): this holds everything a page needs, but it is not yet laid out as DDA lays it out.

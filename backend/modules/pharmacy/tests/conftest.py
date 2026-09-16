@@ -80,7 +80,13 @@ def make_medicine(
         tax_category=TaxCategory.objects.get(code="vat-exempt"),
         mrp=Decimal(mrp),
     )
-    add_pack(item, UnitOfMeasure.objects.get(code="strip"), Decimal("10"), is_sale_default=True)
+    add_pack(
+        item,
+        UnitOfMeasure.objects.get(code="strip"),
+        Decimal("10"),
+        is_sale_default=True,
+        is_purchase_default=True,
+    )
     return MedicineProfile.objects.create(
         item=item,
         generic_name=generic,
@@ -155,3 +161,51 @@ def bill_for(profile: MedicineProfile, branch, counter, *, strips="1"):
     invoice = start_invoice(branch=branch, location=counter, invoice_date=TODAY)
     add_line(invoice, item=profile.item, quantity=Decimal(strips))
     return invoice
+
+
+@pytest.fixture
+def supplier():
+    from core.parties.models import Party, PartyKind
+
+    return Party.objects.create(
+        kind=PartyKind.BUSINESS,
+        is_supplier=True,
+        name="Himalaya Distributors",
+        dda_licence_number="DDA-SUP-1",
+    )
+
+
+@pytest.fixture
+def pharmacist():
+    """A user who may hand over a controlled drug."""
+    from kernel.identity.models import CredentialStatus, CredentialType, User, UserCredential
+
+    user = User.objects.create_user(
+        "pharmacist@example.com", "s3cure-pass-phrase", full_name="Bimala Gurung"
+    )
+    UserCredential.objects.create(
+        user=user,
+        type=CredentialType.PHARMACY_COUNCIL,
+        registration_number="NPC-4321",
+        status=CredentialStatus.VERIFIED,
+    )
+    return user
+
+
+@pytest.fixture
+def expired_credential(pharmacist):
+    """The same pharmacist, whose registration lapsed. An expired one is not a registration."""
+    credential = pharmacist.credentials.get()
+    credential.expires_on = TODAY - timedelta(days=1)
+    credential.save(update_fields=["expires_on", "updated_at"])
+    return credential
+
+
+@pytest.fixture
+def counter_staff():
+    """Someone who works the till and holds no pharmacy registration."""
+    from kernel.identity.models import User
+
+    return User.objects.create_user(
+        "counter@example.com", "s3cure-pass-phrase", full_name="Kiran Rai"
+    )
