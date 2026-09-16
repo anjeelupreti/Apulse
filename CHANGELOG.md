@@ -148,3 +148,25 @@ versioning: [Semantic Versioning](https://semver.org).
   recorded as a change; and a changed password compared equal to itself, because both sides were
   masked before they were compared, so the one fact worth keeping — that it changed, and when —
   was being thrown away. Both are fixed.
+- Taking money, and counting it out. A bill can be settled across several methods at once — half
+  in cash, half on a wallet, the rest on account — and the total is checked against what is still
+  owed, so a mistyped second tender cannot leave the accounts holding money nobody claimed. Change
+  comes only from cash, because handing it back on a card payment is one of the simplest ways to
+  empty a till. A wallet or a card has to carry its transaction reference; cash does not.
+
+  Refunds go against the credit note rather than the invoice: the note is the document that says
+  money is owed back, and a refund with nothing behind it is indistinguishable from a till being
+  emptied. Payments and cash movements are append-only in the database, like the stock ledger, and
+  a mistake is corrected by recording its opposite.
+
+  The till itself is the unit of accountability. One open shift per counter, enforced by the
+  database, because a shortfall on a shared drawer belongs to everybody who touched it and so to
+  nobody. Cash leaving the drawer for anything other than a refund needs a witness and a reason.
+  Closing counts the drawer in Nepali notes and coins and keeps the sheet, not just the total —
+  "twelve five-hundreds" is checkable and "6,000" is not. The difference between the count and the
+  register is recorded and never adjusted away: a till short by four hundred rupees is a fact
+  about the day. Anything beyond a rupee needs an explanation before the shift will close; a rupee
+  either way closes quietly, because demanding a paragraph for a rounding artefact only teaches
+  people to type "ok" into the box. A supervisor signs the count off separately, since a cashier
+  counting their own drawer and approving their own count is one person however many buttons they
+  press.

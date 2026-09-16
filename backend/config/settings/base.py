@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "core.inventory",
     "core.purchasing",
     "core.sales",
+    "core.payments",
     # vertical modules
     "modules.pharmacy",
 ]
