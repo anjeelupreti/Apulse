@@ -110,3 +110,16 @@ versioning: [Semantic Versioning](https://semver.org).
 
   The register the Act prescribes has a format, and that format is still to be obtained
   (CR-DDA-02): this holds everything a page needs, but it is not yet laid out as DDA lays it out.
+- Credit notes and sales returns. A sale is never deleted and an issued bill is never edited, so
+  the only way money comes back off a bill is a credit note against it, numbered in its own series
+  per branch and per fiscal year. Cancelling an invoice now issues one, which is what makes the
+  cancellation answerable in a tax audit: marking our own record cancelled is a change to our
+  record, while the note is a document that says what was reversed and why.
+
+  You cannot return more than was sold, counted against the invoice line, so two half-returns
+  cannot add up to more than the whole. Stock comes back as the batch it went out as, because a
+  recall is answered from the batch record. Returned medicine goes to quarantine by default: once
+  a pack has left the premises nobody can say how it was kept, and putting it back on the shelf is
+  a decision somebody makes deliberately. A credit note is priced at what was charged, never at
+  today's price, or a refund quietly becomes a discount. A returned narcotic goes back into the
+  controlled-drug register.

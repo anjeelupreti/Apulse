@@ -92,3 +92,26 @@ def run_cancelled_hooks(
 ) -> None:
     for hook in _cancelled_hooks:
         hook(invoice, reason=reason, actor=actor, entries=entries or [])
+
+
+#: Run when a credit note is issued, after any returned stock has come back in. The pharmacy
+#: module uses it to put a returned narcotic back into the register.
+CreditNoteHook = Callable[..., None]
+
+_credit_note_hooks: list[CreditNoteHook] = []
+
+
+def register_credit_note_hook(hook: CreditNoteHook) -> CreditNoteHook:
+    if hook not in _credit_note_hooks:
+        _credit_note_hooks.append(hook)
+    return hook
+
+
+def unregister_credit_note_hook(hook: CreditNoteHook) -> None:
+    if hook in _credit_note_hooks:
+        _credit_note_hooks.remove(hook)
+
+
+def run_credit_note_hooks(credit_note: Any, *, entries: list[Any], actor: Any = None) -> None:
+    for hook in _credit_note_hooks:
+        hook(credit_note, entries=entries, actor=actor)

@@ -27,6 +27,7 @@ class PharmacyConfig(AppConfig):
         sales.register_issue_validator(refuse_unprescribed_medicines)
         sales.register_issued_hook(register.record_dispensing)
         sales.register_cancelled_hook(register.record_sale_cancellation)
+        sales.register_credit_note_hook(register.record_return)
         purchasing.register_posted_hook(register.record_receipt)
         purchasing.register_cancelled_hook(register.record_receipt_cancellation)
 

@@ -327,19 +327,29 @@ def is_copy(invoice: SalesInvoice) -> bool:
 
 @transaction.atomic
 def cancel_invoice(invoice: SalesInvoice, *, reason: str, actor: Any = None) -> SalesInvoice:
-    """Cancel an issued invoice and put the stock back.
+    """Cancel an issued invoice: put the stock back and issue the credit note that evidences it.
 
     The invoice keeps its number and its lines. IRD's rule is that a bill is never deleted, and a
-    gap in the numbering is the first thing an inspection asks about.
+    gap in the numbering is the first thing an inspection asks about. The credit note is what makes
+    the cancellation answerable in a tax audit: marking the invoice cancelled is a change to our own
+    record, while the credit note is a numbered document in its own series that says what was
+    reversed and why.
 
-    Note: IRD expects a cancellation to be evidenced by a credit note. That document does not
-    exist yet — see the checklist. This reverses the stock and marks the invoice, which is correct
-    but not yet sufficient for a tax audit.
+    A bill that has already been partly returned is not cancellable — the return has moved stock
+    and credited money once already, and cancelling would do both a second time. Credit the rest
+    instead.
     """
+    from .returns import credit_whole_invoice, credited_amount
+
     if invoice.status == InvoiceStatus.CANCELLED:
         return invoice
     if invoice.status != InvoiceStatus.ISSUED:
         raise DomainError(errors.INVOICE_NOT_EDITABLE, "Only an issued invoice can be cancelled.")
+    if credited_amount(invoice) > 0:
+        raise DomainError(
+            errors.INVOICE_ALREADY_PARTLY_CREDITED,
+            "Part of this bill has already been returned. Credit what is left instead.",
+        )
 
     original = StockLedgerEntry.objects.filter(
         document_type=SALES_INVOICE, document_id=str(invoice.pk)
@@ -362,6 +372,11 @@ def cancel_invoice(invoice: SalesInvoice, *, reason: str, actor: Any = None) -> 
     )
 
     run_cancelled_hooks(invoice, reason=reason, actor=actor, entries=reversals)
+
+    # Issued last, and inside the same transaction: the note has to describe a cancellation that
+    # actually happened, and a cancellation without its note is the state a tax audit asks about.
+    # It moves no stock — the reversals above already did that.
+    credit_whole_invoice(invoice, reason=reason, actor=actor)
     return invoice
 
 

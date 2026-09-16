@@ -36,6 +36,11 @@ pytestmark = [
 
 
 @pytest.fixture
+def quarantine(branch):
+    return Location.objects.get(branch=branch, code="QUARANTINE")
+
+
+@pytest.fixture
 def cabinet(branch):
     """Provisioning creates one for every branch — narcotics are not kept on an open shelf."""
     return Location.objects.get(branch=branch, type=LocationType.LOCKED_CABINET)
@@ -432,3 +437,47 @@ def test_which_group_is_registered_follows_the_rule_not_the_code(
     issue_invoice(invoice)
 
     assert NarcoticRegisterEntry.objects.count() == 1
+
+
+# --------------------------------------------------------------------------- coming back
+def test_a_returned_narcotic_goes_back_into_the_register(morphine, branch, counter, doctor):
+    """It is back in the pharmacy's custody, and a register that never says so cannot be
+    reconciled against the cabinet."""
+    from core.sales.returns import add_return_line, issue_credit_note, start_credit_note
+
+    issued = sell(morphine, branch, counter, doctor)
+    note = start_credit_note(issued.invoice, reason="Patient died; family returned it")
+    add_return_line(note, invoice_line=issued.invoice.lines.first(), quantity=Decimal("1"))
+    issue_credit_note(note)
+
+    lines = list(NarcoticRegisterEntry.objects.all())
+    assert len(lines) == 2
+    assert lines[1].entry_type == RegisterEntryType.RETURN_IN
+    assert lines[1].quantity == Decimal("10")
+    assert lines[1].reason == "Patient died; family returned it"
+    assert lines[1].document_number == note.number
+
+
+def test_a_returned_narcotic_lands_in_quarantine_not_the_cabinet(
+    morphine, branch, counter, doctor, quarantine
+):
+    """A controlled drug that has been out of the pharmacy is not stock to hand to anybody else."""
+    from core.sales.returns import add_return_line, issue_credit_note, start_credit_note
+
+    issued = sell(morphine, branch, counter, doctor)
+    note = start_credit_note(issued.invoice, reason="Unused, returned")
+    add_return_line(note, invoice_line=issued.invoice.lines.first(), quantity=Decimal("1"))
+    issue_credit_note(note)
+
+    assert NarcoticRegisterEntry.objects.order_by("-created_at").first().location == quarantine
+
+
+def test_a_cancellation_note_does_not_double_the_register(morphine, branch, counter, doctor):
+    """The cancellation already wrote its correction. The note that evidences it moves no stock."""
+    from core.sales.services import cancel_invoice
+
+    issued = sell(morphine, branch, counter, doctor)
+    cancel_invoice(issued.invoice, reason="Rung up twice")
+
+    assert NarcoticRegisterEntry.objects.count() == 2
+    assert balance_of(branch=branch, item=morphine.item) == Decimal("0")

@@ -502,3 +502,45 @@ def reconcile_register(*, branch: Any = None) -> list[RegisterDiscrepancy]:
                 RegisterDiscrepancy(*key, balance_says=Decimal("0"), entries_say=summed)
             )
     return discrepancies
+
+
+def record_return(credit_note: Any, *, entries: Sequence[Any], actor: Any = None) -> None:
+    """Called by core.sales when a credit note is issued.
+
+    A cancellation moves no stock and so produces no entries; the cancelled hook has already
+    written those lines. This is for goods that physically came back over the counter — a narcotic
+    returned to the pharmacy is back in its custody, and a register that never says so cannot be
+    reconciled against the cabinet.
+    """
+    if not entries:
+        return
+
+    controlled = controlled_profiles(
+        {entry.item_id for entry in entries}, on_date=credit_note.note_date
+    )
+    if not controlled:
+        return
+
+    dispenser = _dispenser_details(actor, on_date=credit_note.note_date)
+    patient = {
+        "patient_name": credit_note.invoice.customer_name,
+    }
+
+    for entry in entries:
+        if entry.item_id not in controlled:
+            continue
+        record_entry(
+            branch=entry.branch,
+            location=entry.location,
+            item=entry.item,
+            batch=entry.batch,
+            entry_type=RegisterEntryType.RETURN_IN,
+            quantity=entry.quantity,
+            occurred_on=entry.occurred_on,
+            document_type=entry.document_type,
+            document_id=entry.document_id,
+            document_number=entry.document_number,
+            reason=credit_note.reason,
+            **patient,
+            **dispenser,
+        )
