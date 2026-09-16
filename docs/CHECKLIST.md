@@ -514,7 +514,7 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P0 `Patient`: MRN (per tenant), name en/ne, sex, DOB/age (estimated flag), phone, guardian/family link, address, allergies, chronic conditions, national ID/citizenship (encrypted, optional), NHIS/SSF number, consent flags (SMS/WhatsApp/data sharing), preferred language — [MASTER]
 - [ ] P0 Family/household grouping (family ledger)
 - [ ] P0 Patient ↔ Party link (billing) optional
-- [ ] P0 `Practitioner` (doctor/dentist/health worker): name, council (NMC/NDC/NHPC/NPC), registration number (format validated), specialty, hospital/clinic, phone, verification status & method, verified_by — [MASTER]; quick-add from billing screen with "unverified" flag
+- [x] P0 `Practitioner` (doctor/dentist/health worker): name, council (NMC/NDC/NHPC/NPC), registration number (format validated), specialty, hospital/clinic, phone, verification status & method, verified_by — [MASTER]; quick-add from billing screen with "unverified" flag. **A name read off a prescription pad is accepted without a registration number** — refusing the record would only lose the sale — but a drug that requires a registered prescriber is then refused at issue — *per-council number format validation is CR-NMC-01; the quick-add screen comes with the POS*
 - [ ] P0 Duplicate patient detection (phone + name + DOB fuzzy); merge with audit
 - [ ] P1 Patient timeline component (purchases, prescriptions, counseling, reminders, ADRs) — reused by pharmacy, clinic, dental
 
@@ -610,7 +610,7 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 # PHASE 5 — Pharmacy Retail MVP (module `pharmacy`)
 
 ## M5.1 Medicine master (pharmacy extension of Item)
-- [ ] P0 `MedicineProfile`: generic name (INN), salt composition (multi-API with strength & unit), dosage form, strength, route, therapeutic class (ATC code optional), **drug schedule** (Samuha KA/KHA/GA via rules engine), special flags (e.g., Pregabalin Rx-mandatory, Dicyclomine/Promethazine record-keeping — CR-DDA-03), DDA registration number, marketing authorization holder, pregnancy/lactation category, controlled-drug storage required, cold-chain required, pack description, max dispensable qty without Rx (setting)
+- [x] P0 `MedicineProfile`: generic name (INN), salt composition (multi-API with strength & unit), dosage form, strength, route, therapeutic class (ATC code optional), **drug schedule** (Samuha KA/KHA/GA via rules engine), special flags (e.g., Pregabalin Rx-mandatory, Dicyclomine/Promethazine record-keeping — CR-DDA-03), DDA registration number, marketing authorization holder, pregnancy/lactation category, controlled-drug storage required, cold-chain required, pack description, max dispensable qty without Rx (setting). Kept off `Item`, so a bandage or a thermometer carries no empty strength and schedule columns — *salt composition, ATC class, pregnancy/lactation category and the special-flag list are pending; a medicine starts **unclassified** and unclassified is treated as the most restricted group, because guessing the other way means handing over a controlled drug*
 - [ ] P0 Generic ↔ brand mapping; substitute finder by identical salt+strength+form; price comparison
 - [ ] P0 Medicine search: brand, generic, salt, barcode, manufacturer; typo-tolerant trigram; Devanagari & romanized; results show stock, nearest expiry, MRP, schedule badge; < 1 s p95 on 100k items
 - [ ] P0 Medicine import template (all fields) + global catalogue link/copy; bulk schedule assignment with audit
@@ -619,16 +619,16 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P1 Dosage label templates (morning/afternoon/night pictograms, Nepali instructions)
 
 ## M5.2 Drug rules engine (Samuha enforcement)
-- [ ] P0 Rule set model (versioned, effective date, published via Control Plane M3.10)
-- [ ] P0 Rule actions at billing time: `REQUIRE_PRESCRIPTION`, `REQUIRE_PRESCRIBER_REGISTRATION`, `REQUIRE_PATIENT_IDENTITY`, `REQUIRE_REGISTER_ENTRY`, `REQUIRE_PHARMACIST_ROLE`, `MAX_QTY`, `WARN`, `BLOCK`
-- [ ] P0 Enforcement both client-side (UX) and server-side (authoritative); offline enforcement using cached rule set
+- [x] P0 Rule set model (versioned, effective date, published via Control Plane M3.10). `ScheduleRule` is platform data, dated from the Drug Act's commencement, and **a rule is never rewritten**: a DDA notice is entered as a new dated rule, so a backdated sale is still judged by the rule that applied on the day it happened. Seeded rules carry a `source_note` saying they are unverified until CR-DDA-01 closes — *publication through the Control Plane comes with M3.10*
+- [ ] P0 Rule actions at billing time: `REQUIRE_PRESCRIPTION`, `REQUIRE_PRESCRIBER_REGISTRATION`, `REQUIRE_PATIENT_IDENTITY`, `REQUIRE_REGISTER_ENTRY`, `REQUIRE_PHARMACIST_ROLE`, `MAX_QTY`, `WARN`, `BLOCK` — *`REQUIRE_PRESCRIPTION` and `REQUIRE_PRESCRIBER_REGISTRATION` are enforced at issue; the register-entry, pharmacist-role and quantity requirements are recorded on the rule and surfaced to the counter, but not yet acted on*
+- [ ] P0 Enforcement both client-side (UX) and server-side (authoritative); offline enforcement using cached rule set — *the server side is done: the check is registered into `core.sales` through an extension point, so core never imports the pharmacy module, and a refusal happens **before** an invoice number is taken so a blocked sale leaves no gap in the run*
 - [ ] P0 Override policy (which rules can be overridden, by which role, with reason; KA never overridable)
 - [ ] P0 Compliance log of every rule evaluation outcome per sale line
 
 ## M5.3 Prescriptions
-- [ ] P0 `Prescription`: patient, prescriber, date (BS/AD), source (paper scan/photo, e-Rx, verbal-not-allowed flag), validity, diagnosis (optional), items (medicine/generic, dose, frequency, duration, qty), attachments (multi-page photo), refills allowed/used, status
+- [ ] P0 `Prescription`: patient, prescriber, date (BS/AD), source (paper scan/photo, e-Rx, verbal-not-allowed flag), validity, diagnosis (optional), items (medicine/generic, dose, frequency, duration, qty), attachments (multi-page photo), refills allowed/used, status — *patient, prescriber, dates, validity, diagnosis and an attachment reference exist and are linked to the bill they justify; prescribed lines, refill counts, source and status are pending, and the attachment becomes a real file reference with M2.7*
 - [ ] P0 Capture UX at POS: camera/scan, quick prescriber search/add, link Rx lines to bill lines, reuse existing valid Rx for refills
-- [ ] P0 Prescription validity checks & expired Rx flag
+- [x] P0 Prescription validity checks & expired Rx flag — a prescription dated in the future is not valid yet, one past its end date is refused, and one with no end date stays valid
 - [ ] P0 Prescription log register & search (by patient/doctor/drug/date) — [REPORT] + export
 - [ ] P1 OCR assist for drug names from photo (suggestions only, pharmacist confirms)
 

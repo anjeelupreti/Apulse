@@ -9,6 +9,11 @@ from kernel.entitlements.manifest import (
     register,
 )
 
+#: A code no real module will ever take. These tests are about the validation rules, so they
+#: must not borrow the name of a module that might later exist — "pharmacy" once did, and the
+#: duplicate-registration check started firing before the rule under test.
+FAKE = "zz_example"
+
 
 def a_module(code: str, depends_on: tuple[str, ...] = ()) -> ModuleManifest:
     return ModuleManifest(
@@ -54,11 +59,11 @@ def test_a_feature_must_belong_to_its_module(temporary_manifests):
     with pytest.raises(ValueError, match="does not belong to module"):
         register(
             ModuleManifest(
-                code="pharmacy",
-                name_en="Pharmacy",
-                name_ne="फार्मेसी",
+                code=FAKE,
+                name_en="Example",
+                name_ne="उदाहरण",
                 description="",
-                features=(FeatureSpec(code="wholesale.routes", name_en="Routes", name_ne="मार्ग"),),
+                features=(FeatureSpec(code="zz_other.routes", name_en="Routes", name_ne="मार्ग"),),
             )
         )
 
@@ -67,18 +72,18 @@ def test_a_feature_needs_both_languages(temporary_manifests):
     with pytest.raises(ValueError, match="English and Nepali"):
         register(
             ModuleManifest(
-                code="pharmacy",
-                name_en="Pharmacy",
-                name_ne="फार्मेसी",
+                code=FAKE,
+                name_en="Example",
+                name_ne="उदाहरण",
                 description="",
-                features=(FeatureSpec(code="pharmacy.pos", name_en="POS", name_ne=" "),),
+                features=(FeatureSpec(code=f"{FAKE}.pos", name_en="POS", name_ne=" "),),
             )
         )
 
 
 def test_a_missing_dependency_is_caught_at_startup(temporary_manifests):
     """Better a failed deploy than a customer discovering it at install time."""
-    register(a_module("wholesale", depends_on=("does_not_exist",)))
+    register(a_module(FAKE, depends_on=("does_not_exist",)))
     with pytest.raises(DependencyError, match="not installed"):
         manifest.validate_dependencies()
 

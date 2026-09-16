@@ -29,6 +29,7 @@ from .models import (
     SalesInvoiceLineBatch,
 )
 from .totals import DEFAULT_ROUNDING_STEP, LineAmounts, compute_line, compute_totals
+from .validators import run_issue_validators
 
 logger = structlog.get_logger(__name__)
 
@@ -237,6 +238,10 @@ def issue_invoice(
     lines = list(invoice.lines.select_related("item", "unit", "item__tax_category").all())
     if not lines:
         raise DomainError(errors.INVOICE_HAS_NO_LINES)
+
+    # Modules add their own rules here — the pharmacy module refuses a scheduled medicine with no
+    # prescription. Run before a number is taken, so a refused sale leaves no gap in the run.
+    run_issue_validators(invoice)
 
     issued = issue_number(
         document_type=SALES_INVOICE, branch=invoice.branch, on_date=invoice.invoice_date

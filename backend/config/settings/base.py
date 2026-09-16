@@ -59,9 +59,12 @@ INSTALLED_APPS = [
     "core.tax",
     "core.catalog",
     "core.parties",
+    "core.practitioners",
     "core.inventory",
     "core.purchasing",
     "core.sales",
+    # vertical modules
+    "modules.pharmacy",
 ]
 
 MIDDLEWARE = [

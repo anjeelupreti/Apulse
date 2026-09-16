@@ -78,3 +78,18 @@ versioning: [Semantic Versioning](https://semver.org).
   back out of the shelf price rather than added to it. Which batch each customer received is
   recorded, so a recall can be answered. Reprints are counted so copies can be marked, and
   cancelling an invoice puts the stock back while keeping the number.
+- Prescribers: doctors, dentists and health workers with their council registration. A name read
+  off a prescription pad is accepted without a legible registration number, because refusing the
+  record would only lose the sale; a medicine that requires a registered prescriber is then refused
+  at the counter until the number is there.
+- The pharmacy module: what makes this a pharmacy rather than a shop. Medicines carry a generic
+  name, strength, dosage form and their समूह — क, ख or ग — and the समूह decides what has to happen
+  before the medicine is handed over. Antibiotics and narcotics are refused without a valid
+  prescription; a prescription dated in the future, or past its end date, is not a valid one. A
+  medicine nobody has classified yet is treated as the most restricted, because guessing the other
+  way means handing over a controlled drug by mistake. The rules are dated, so a notice that
+  changes a requirement is entered as a new rule rather than rewriting how last year's sales were
+  judged, and a backdated sale is judged by the rule that applied on the day it happened. The
+  check runs before the invoice number is taken, so a refused sale leaves no gap in the numbering.
+  The counter can ask a bill what it still needs while it is being built. The seeded rules are
+  marked unverified: the official group lists are still to be confirmed against the Act (CR-DDA-01).
