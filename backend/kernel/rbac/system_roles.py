@@ -54,6 +54,10 @@ _VIEW_ORGANISATION = ("tenancy.branch.view", "tenancy.location.view")
 #: Serving a customer: build a bill, issue it, take the money, print it. Deliberately stops short
 #: of cancelling a tax document, crediting money back, or putting a return on the shelf.
 _SELL = (
+    # You cannot sell what you cannot look up, and you cannot judge a credit sale without seeing
+    # what the customer already owes.
+    "catalog.item.view",
+    "payments.ledger.view",
     "sales.invoice.view",
     "sales.invoice.build",
     "sales.invoice.issue",
@@ -69,13 +73,13 @@ _SELL = (
 #: What somebody trusted with the money side may do on top: give it back, put a bill on account,
 #: reverse a mistake. Each of these is a way money leaves, so none is part of serving a customer.
 _HANDLE_MONEY = (
+    "catalog.item.view",
     "sales.invoice.cancel",
     "sales.invoice.discount",
     "sales.credit_note.issue",
     "payments.payment.refund",
     "payments.payment.reverse",
     "payments.credit.sell",
-    "payments.ledger.view",
 )
 
 SYSTEM_ROLES: tuple[SystemRole, ...] = (

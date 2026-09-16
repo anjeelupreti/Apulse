@@ -235,3 +235,22 @@ versioning: [Semantic Versioning](https://semver.org).
   reprinting and taking payment, and stops short of cancelling a tax document, crediting money back
   or putting a returned pack on the shelf. Those belong to the pharmacist in charge and the
   accountant.
+- The rest of the counter, over HTTP: the search somebody types into while a customer waits, the
+  payment buttons, splitting a bill across them, refunds, opening and counting the till, and a
+  customer's statement.
+
+  The counter's search is deliberately a different endpoint from the catalogue list. It answers
+  what is actually being asked — is there any, what does it cost, when does the nearest one expire
+  — for one branch, and quotes the price of the batch on the shelf, which is the figure the bill
+  will charge. It reports what is on hand and what is available separately, because a box that is
+  there but expired is not the same thing as no box. A scanned barcode comes back with the pack it
+  was printed on, so scanning a box adds a box.
+
+  Two bugs came out of writing the tests for it: the shared branch filter was being applied to
+  catalogue items, which do not belong to a branch, and the search was slicing its results before
+  the filters ran, which Django refuses outright. A view can now say its rows have no branch, and
+  the limit is applied after filtering rather than before.
+
+  Selling roles also gained the two permissions that were obviously missing once the endpoints
+  existed: you cannot sell what you cannot look up, and you cannot judge a credit sale without
+  seeing what the customer already owes.

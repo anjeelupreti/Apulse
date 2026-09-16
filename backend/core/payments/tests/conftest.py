@@ -107,15 +107,28 @@ def paracetamol():
     return item
 
 
-def stock_up(item, branch, location, quantity=1000):
+def stock_up(item, branch, location, quantity=1000, *, expiry_date=None, number="B1"):
+    """Put stock on the shelf.
+
+    The default expiry is a year after the synthetic business date, which is in 2016 — long past
+    in real time. That is deliberate for the accounting tests, and wrong for anything that asks
+    what can be sold *today*, which is what `future_expiry` is for.
+    """
     return receive_stock(
         item=item,
         branch=branch,
         location=location,
         quantity=Decimal(str(quantity)),
-        batch_number="B1",
-        expiry_date=TODAY + timedelta(days=365),
+        batch_number=number,
+        expiry_date=expiry_date or TODAY + timedelta(days=365),
         mrp=Decimal("2.00"),
         unit_cost=Decimal("1.00"),
         occurred_on=TODAY,
     )
+
+
+def future_expiry(years=2):
+    """A date that is still in the future whenever the suite happens to be run."""
+    from django.utils import timezone
+
+    return timezone.localdate() + timedelta(days=365 * years)

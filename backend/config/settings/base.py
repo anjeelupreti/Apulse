@@ -254,6 +254,8 @@ SPECTACULAR_SETTINGS = {
         "CreditNoteKindEnum": "core.sales.models.CreditNoteKind.choices",
         "ReturnReasonEnum": "core.sales.models.ReturnReason.choices",
         "ReturnDestinationEnum": "core.sales.models.ReturnDestination.choices",
+        "PaymentModeKindEnum": "core.payments.models.PaymentModeKind.choices",
+        "CashMovementKindEnum": "core.payments.models.CashMovementKind.choices",
     },
 }
 

@@ -40,7 +40,9 @@ class TenantAPIView(viewsets.GenericViewSet[Any]):
     action_permissions: dict[str, tuple[str, ...]] = {}
     #: Which permission decides the branches this user may see rows from.
     branch_scope_permission: str | None = None
-    branch_field = "branch"
+    #: The field rows are scoped by. `None` says the rows do not belong to a branch at all — a
+    #: catalogue item belongs to the account — and turns branch scoping off for that view.
+    branch_field: str | None = "branch"
     date_field: str | None = None
 
     def get_permissions(self) -> Any:

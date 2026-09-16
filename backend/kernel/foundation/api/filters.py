@@ -65,6 +65,11 @@ class BranchScopeFilter(BaseFilterBackend):
         self, request: Request, queryset: QuerySet[Any], view: APIView
     ) -> QuerySet[Any]:
         field = getattr(view, "branch_field", "branch")
+        if not field:
+            # The view says its rows do not belong to a branch — a catalogue item belongs to the
+            # account. Any `?branch=` it takes means something else, and is the view's to read.
+            return queryset
+
         permission = getattr(view, self.view_attribute, None)
 
         if permission:
