@@ -6,6 +6,8 @@ from typing import cast
 import structlog
 from django.db import transaction
 
+from kernel.audit import services as audit
+from kernel.audit.models import AuditAction
 from kernel.identity.models import User
 from kernel.tenancy.models import Branch, LegalEntity, Tenant
 
@@ -78,7 +80,13 @@ def set_role_permissions(role: Role, permissions: tuple[str, ...]) -> Role:
             "Clone it to make a variation."
         )
     _require_known_permissions(permissions)
+    before = sorted(role.permission_codes)
     _replace_permissions(role, frozenset(permissions))
+    audit.record(
+        action=AuditAction.PERMISSION_CHANGE,
+        entity=role,
+        changes={"permissions": {"from": before, "to": sorted(permissions)}},
+    )
     return role
 
 
@@ -144,9 +152,32 @@ def assign_role(
         scope=scope,
         expires_at=expires_at.isoformat() if expires_at else None,
     )
+    # Who can do what is exactly the kind of change an inspection asks about later.
+    audit.record(
+        action=AuditAction.PERMISSION_CHANGE,
+        actor=granted_by,
+        entity=assignment,
+        entity_label=f"{user} as {role.name}",
+        changes={
+            "granted": {"from": None, "to": role.code},
+            "scope": {"from": None, "to": scope},
+            "expires_at": {"from": None, "to": expires_at.isoformat() if expires_at else None},
+        },
+        reason=reason,
+        branch=branch,
+    )
     return assignment
 
 
-def revoke_role(assignment: RoleAssignment) -> None:
+def revoke_role(assignment: RoleAssignment, *, actor: User | None = None, reason: str = "") -> None:
     logger.info("role_revoked", user_id=str(assignment.user_id), role=assignment.role.code)
+    audit.record(
+        action=AuditAction.PERMISSION_CHANGE,
+        actor=actor,
+        entity_type=assignment._meta.label,
+        entity_id=str(assignment.pk),
+        entity_label=f"{assignment.user} as {assignment.role.name}",
+        changes={"granted": {"from": assignment.role.code, "to": None}},
+        reason=reason,
+    )
     assignment.delete()

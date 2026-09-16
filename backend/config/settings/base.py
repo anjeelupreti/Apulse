@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "kernel.identity",
     "kernel.tenancy",
     "kernel.rbac",
+    "kernel.audit",
 ]
 
 MIDDLEWARE = [
@@ -65,6 +66,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "kernel.tenancy.middleware.TenantMiddleware",
     "kernel.foundation.middleware.LogContextMiddleware",
+    "kernel.audit.middleware.AuditContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

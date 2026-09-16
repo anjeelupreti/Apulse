@@ -5,9 +5,7 @@ from typing import Any
 
 import structlog
 
-SENSITIVE_KEYS = frozenset(
-    {"password", "token", "access", "refresh", "authorization", "secret", "api_key", "otp", "pin"}
-)
+from shared.redaction import MASK, is_sensitive
 
 
 def redact_sensitive(
@@ -15,8 +13,8 @@ def redact_sensitive(
 ) -> MutableMapping[str, Any]:
     """Mask values of well-known secret keys so they never reach log storage."""
     for key in event_dict:
-        if key.lower() in SENSITIVE_KEYS:
-            event_dict[key] = "***"
+        if is_sensitive(key):
+            event_dict[key] = MASK
     return event_dict
 
 

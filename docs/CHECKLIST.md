@@ -314,13 +314,13 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P1 Cache the resolved permission set — **currently computed per check on purpose**: an earlier per-user memo leaked one tenant's permissions into another. Belongs with the M2.5 entitlement cache, where invalidation is explicit
 
 ## M2.4 Audit & activity
-- [ ] P0 `AuditEvent` append-only, monthly partitioned; DB trigger prevents UPDATE/DELETE
-- [ ] P0 Automatic capture via model signals/service layer: create/update/archive with field diffs (sensitive fields masked)
-- [ ] P0 Explicit business audit events (login, export, print, reprint, override, void, permission change, impersonation, settings change)
-- [ ] P0 Hash-chaining (each event stores hash of previous per tenant) for tamper evidence; daily anchor hash stored off-DB
+- [~] P0 `AuditEvent` append-only — **enforced by database triggers on UPDATE, DELETE *and* TRUNCATE** (row triggers do not fire for TRUNCATE, so it needs its own), plus row-level security. **Monthly partitioning deferred**: it is a retention and volume concern, introduced later by a table swap, and the correctness-critical properties are in place now
+- [~] P0 Capture via the service layer: `record_create` / `record_update` produce field diffs, values stay readable (Decimal as text, never float), and secret-looking fields are recorded as changed without revealing either value — **a save that changed nothing records nothing**. *Opt-in model mixin for automatic capture pending*
+- [~] P0 Explicit business audit events — the full action vocabulary is defined (login, export, print, reprint, override, void, permission change, settings change, impersonation start/end, view-sensitive); **permission changes are wired up**, the rest are wired as each flow is built
+- [~] P0 Hash-chaining per tenant with the chain head row-locked while appending, so concurrent writers cannot claim the same position; `verify_chain()` detects an altered entry, a forged entry, and a gap, and reports where — **daily off-database anchor hash pending**
 - [ ] P0 Audit viewer UI (tenant admin): filters (user, entity, action, date, branch, device), export per [REPORT]
-- [ ] P0 Entity "History" tab component reused across all detail pages
-- [ ] P1 Audit retention policy per tenant plan (min statutory)
+- [ ] P0 Entity "History" tab component reused across all detail pages — *`history_for(instance)` backs it*
+- [ ] P1 Audit retention policy per tenant plan (min statutory) — *needs the partitioning above, since the triggers rightly block deletion*
 - [ ] P1 Suspicious activity rules (e.g., many voids, after-hours narcotic sales, bulk export) → alerts to owner
 
 ## M2.5 Module registry, entitlements & feature flags

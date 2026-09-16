@@ -35,3 +35,7 @@ versioning: [Semantic Versioning](https://semver.org).
   branch; assignments that can expire, for inspection visits and locum cover; and professional
   registrations (`UserCredential`), so actions that require a registered pharmacist stay closed to
   everyone else whatever their role. `/api/v1/me/context` now returns the caller's permissions.
+- Audit trail: every recorded action is hash-chained to the one before it, per account, and the
+  database refuses to update, delete or truncate the table. `verify_chain()` reports whether the
+  trail is intact and, if not, exactly where it breaks. Changes are recorded field by field, with
+  secrets shown as changed but never printed. Permission changes are recorded automatically.
