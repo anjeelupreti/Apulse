@@ -55,3 +55,9 @@ versioning: [Semantic Versioning](https://semver.org).
   at 1 on Shrawan 1, with the number format and the counter frozen once the first number has been
   issued. Offline counters are lent a block of numbers in advance so they can keep billing without
   a connection, and the server skips past anything it has lent.
+- Tax categories with dated rates, so an old invoice is always re-priced at the rate it carried.
+  Which category a medicine belongs to is deliberately not assumed: every item must be classified.
+- The item catalogue. Stock is counted in base units — a tablet, a millilitre — and packs are
+  conversions on top, so selling four tablets out of a strip and receiving twenty boxes of ten
+  strips are the same arithmetic. Barcodes identify the pack, so scanning a box adds a box.
+  Quantities read the way a storekeeper counts: "2 boxes 4 strips 7 tablets", not "247 tablets".

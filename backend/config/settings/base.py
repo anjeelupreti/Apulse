@@ -55,6 +55,9 @@ INSTALLED_APPS = [
     "kernel.audit",
     "kernel.entitlements",
     "kernel.numbering",
+    # core domain
+    "core.tax",
+    "core.catalog",
 ]
 
 MIDDLEWARE = [

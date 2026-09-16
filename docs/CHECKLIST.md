@@ -10,7 +10,13 @@
 - `[ ]` open · `[x]` done · `[~]` in progress · `[-]` deliberately dropped (write reason inline)
 - Each **Phase** has **Milestones (M)**. A milestone is closed only when every item **and** its *Exit Criteria* are met.
 - **Priority tags:** `P0` must-have for the milestone · `P1` should-have · `P2` nice-to-have (may move to a later milestone).
-- **The Foundation (Phases 0–3) is not optional and not rushed.** No vertical-module code is merged until milestone **M3.4** is closed.
+- **The Foundation (Phases 0–3) is not optional and not rushed.** ~~No vertical-module code is merged until milestone **M3.4** is closed.~~
+  **Relaxed 2026-09-16, deliberately.** The kernel is far enough along (tenancy, auth, RBAC, audit,
+  entitlements, calendar, numbering) that continuing to build unseen infrastructure was adding
+  risk rather than removing it. Core domain and pharmacy work now proceed in parallel with the
+  control plane. What this trades away: plans, subscriptions and billing will exist only as
+  entitlement grants until Phase 3 catches up, so **nothing may be sold to a real customer until
+  M3.4 is closed** — the constraint moves from "do not build" to "do not sell".
 - Every item that produces code must satisfy the **Definition of Done** (§0.2).
 - Anything regulatory references a `CR-*` id from the Compliance Register — do not implement until that CR is ✅.
 
