@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from kernel.rbac import resolver
 from kernel.tenancy.models import Branch, Tenant, TenantMembership
 from shared.errors import DomainError, codes
 
@@ -136,7 +137,8 @@ class MeContextView(APIView):
             "tenant": tenant if isinstance(tenant, Tenant) else None,
             "memberships": memberships,
             "branches": branches,
-            "permissions": [],
+            "permissions": sorted(resolver.permissions_for(user)),
+            # Filled in by the entitlement resolver (M2.5).
             "features": [],
             "server_time": timezone.now(),
         }

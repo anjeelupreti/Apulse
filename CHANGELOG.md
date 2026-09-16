@@ -30,3 +30,8 @@ versioning: [Semantic Versioning](https://semver.org).
   codes; lockout after repeated failures; a security log of every sign-in attempt; and
   `/api/v1/me/context` returning the user, tenant, memberships and branches in one call.
   Signing in on a tenant's own address requires an active membership of that tenant.
+- Access control: a registry of every permission the code checks; twelve built-in roles seeded into
+  each account, from Owner to DDA Inspector; roles scoped to the whole account, one business or one
+  branch; assignments that can expire, for inspection visits and locum cover; and professional
+  registrations (`UserCredential`), so actions that require a registered pharmacist stay closed to
+  everyone else whatever their role. `/api/v1/me/context` now returns the caller's permissions.

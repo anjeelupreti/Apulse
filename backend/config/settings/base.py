@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "kernel.geo",
     "kernel.identity",
     "kernel.tenancy",
+    "kernel.rbac",
 ]
 
 MIDDLEWARE = [

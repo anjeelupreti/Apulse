@@ -78,15 +78,25 @@ def provision_tenant(
             defaults={"tenant": tenant, "is_primary": True, "is_verified": True},
         )
 
-    if owner is not None:
-        # Without a membership nobody could sign in on this tenant's own address.
-        membership, _ = TenantMembership.objects.get_or_create(
-            tenant=tenant, user=owner, defaults={"status": TenantMembership.Status.ACTIVE}
-        )
-        if membership.default_branch_id is None:
-            membership.default_branch = branch
-            membership.status = TenantMembership.Status.ACTIVE
-            membership.save(update_fields=["default_branch", "status", "updated_at"])
+    # Imported here rather than at module load: access control builds on tenancy, so importing it
+    # the other way round at import time would be a cycle.
+    from kernel.rbac import system_roles
+    from kernel.rbac.services import assign_role, sync_system_roles
+
+    with tenant_context(tenant.id):
+        roles = {role.code: role for role in sync_system_roles(tenant)}
+
+        if owner is not None:
+            # Without a membership nobody could sign in on this tenant's own address, and without
+            # the Owner role the first person in would be able to do nothing once inside.
+            membership, _ = TenantMembership.objects.get_or_create(
+                tenant=tenant, user=owner, defaults={"status": TenantMembership.Status.ACTIVE}
+            )
+            if membership.default_branch_id is None:
+                membership.default_branch = branch
+                membership.status = TenantMembership.Status.ACTIVE
+                membership.save(update_fields=["default_branch", "status", "updated_at"])
+            assign_role(user=owner, role=roles[system_roles.OWNER], reason="Account owner")
 
     if created:
         tenant.set_status(status, reason="Provisioned")

@@ -1,7 +1,9 @@
+from datetime import date
 from typing import ClassVar
 
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from kernel.foundation.models import BaseModel
@@ -89,6 +91,66 @@ class RecoveryCode(BaseModel):
 
     def __str__(self) -> str:
         return f"Recovery code for {self.user}"
+
+
+class CredentialType(models.TextChoices):
+    """Professional registers. Exact council for each profession: see CR-NPC-01 / CR-NMC-01."""
+
+    PHARMACY_COUNCIL = "npc", _("Nepal Pharmacy Council")
+    MEDICAL_COUNCIL = "nmc", _("Nepal Medical Council")
+    NURSING_COUNCIL = "nnc", _("Nepal Nursing Council")
+    HEALTH_PROFESSIONAL_COUNCIL = "nhpc", _("Nepal Health Professional Council")
+    OTHER = "other", _("Other")
+
+
+class CredentialStatus(models.TextChoices):
+    PENDING = "pending", _("Awaiting verification")
+    VERIFIED = "verified", _("Verified")
+    REJECTED = "rejected", _("Rejected")
+
+
+class UserCredential(BaseModel):
+    """A professional registration held by a person.
+
+    Global rather than per-tenant: a pharmacist's council registration is a fact about them, not
+    about the pharmacy that employs them, and a locum working at three shops registers once.
+
+    Some actions require one of these regardless of role — only a registered pharmacist may
+    dispense a Samuha KA medicine, however the owner has configured permissions.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="credentials")
+    type = models.CharField(max_length=10, choices=CredentialType.choices)
+    registration_number = models.CharField(max_length=50)
+    status = models.CharField(
+        max_length=10, choices=CredentialStatus.choices, default=CredentialStatus.PENDING
+    )
+    issued_on = models.DateField(null=True, blank=True)
+    expires_on = models.DateField(null=True, blank=True)
+    verified_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_note = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "type", "registration_number"],
+                name="identity_unique_credential",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_type_display()} {self.registration_number}"
+
+    def is_valid_on(self, on_date: date | None = None) -> bool:
+        """Verified and not expired. An expired registration is not a registration."""
+        if self.status != CredentialStatus.VERIFIED:
+            return False
+        if self.expires_on is None:
+            return True
+        return self.expires_on >= (on_date or timezone.localdate())
 
 
 class LoginOutcome(models.TextChoices):

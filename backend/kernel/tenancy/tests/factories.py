@@ -12,8 +12,12 @@ def make_tenant(
     name: str | None = None,
     status: str = TenantStatus.ACTIVE,
     is_vat_registered: bool = False,
+    owner: object = None,
 ) -> ProvisionedTenant:
-    """Provision a complete tenant: legal entity, branch and default stock locations."""
+    """Provision a complete tenant: legal entity, branch, stock locations and system roles.
+
+    Passing `owner` also creates their membership and grants them the Owner role.
+    """
     return provision_tenant(
         slug=slug,
         name=name or slug.title() + " Pharmacy",
@@ -22,6 +26,7 @@ def make_tenant(
         branch_name=slug.title() + " Main",
         status=status,
         is_vat_registered=is_vat_registered,
+        owner=owner,  # type: ignore[arg-type]
     )
 
 

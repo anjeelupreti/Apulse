@@ -301,16 +301,17 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P2 Passkeys (WebAuthn)
 
 ## M2.3 Authorization (RBAC + scopes)
-- [ ] P0 Permission registry generated from module manifests (`module.resource.action`)
-- [ ] P0 `Role` (system vs custom, tenant-scoped), `RolePermission`, `RoleAssignment` (user, role, scope: tenant / legal entity / branch(es))
-- [ ] P0 System roles seeded: Owner, Administrator, Pharmacist-in-Charge, Pharmacist, Assistant Pharmacist, Counter Staff, Store Keeper, Purchase Officer, Accountant, Auditor (read-only), DDA Inspector (read-only, time-boxed, compliance screens only), Delivery Staff
+- [x] P0 Permission registry (`<module>.<resource>.<action>`, bilingual labels, auto-discovered from each app's `permissions.py`) — *module manifests feed the same registry when they land in M2.5*
+- [x] P0 `Role` (system vs custom, tenant-scoped), `RolePermission`, `RoleAssignment` (user, role, scope: tenant / legal entity / branch) with a DB constraint that the scope matches its target
+- [x] P0 System roles seeded per tenant and re-synced idempotently: Owner, Administrator, Pharmacist-in-Charge, Pharmacist, Assistant Pharmacist, Counter Staff, Store Keeper, Purchase Officer, Accountant, Auditor, DDA Inspector, Delivery Staff. **Owner resolves to every permission and Auditor/Inspector to every read-only permission, so a new module cannot accidentally hand an inspector write access.** Built-in roles are not editable — clone to vary — so a release that adds permissions cannot silently overwrite local edits
 - [ ] P0 Role editor UI: permission matrix grouped by module, search, clone role, compare roles, "who has this permission" view
-- [ ] P0 Server-side checks: DRF permission classes + object-level branch scope filter; queryset scoping by assigned branches
+- [~] P0 Server-side checks: **`RequireTenant`, `HasPermission` (view-declared codes) and an inline `RequirePermission(...)` factory; `branch_ids_for()` returns the branch limit for a permission** — automatic queryset scoping helpers arrive with the first branch-scoped resource in M4.x
 - [ ] P0 Field-level visibility: cost price, margin, supplier rates, patient diagnosis — permission-gated in serializers
-- [ ] P0 Professional qualification gates: some actions require user to have verified credential (e.g., dispense Samuha KA requires registered pharmacist) — `UserCredential` (type NPC/NMC/NHPC, number, expiry, verified_by, document)
+- [x] P0 Professional qualification gates: `UserCredential` (council, number, expiry, verified_by) with a **credential requirement declared on the permission itself, so no role configuration can let an unregistered person do a pharmacist-only action**; an unverified or expired registration counts for nothing — *document upload pending*
 - [~] P0 `/api/v1/me/context` endpoint — **user, tenant, memberships, branches and server time done**; permissions and features are present but empty until M2.3/M2.5; limits, nav, settings subset, BS date and fiscal year pending
-- [ ] P1 Temporary access grants (expiring role assignment) — used for inspectors & locum pharmacists
+- [x] P1 Temporary access grants (expiring role assignment) — used for inspectors & locum pharmacists
 - [ ] P1 Permission change audit & monthly "access review" report for owners
+- [ ] P1 Cache the resolved permission set — **currently computed per check on purpose**: an earlier per-user memo leaked one tenant's permissions into another. Belongs with the M2.5 entitlement cache, where invalidation is explicit
 
 ## M2.4 Audit & activity
 - [ ] P0 `AuditEvent` append-only, monthly partitioned; DB trigger prevents UPDATE/DELETE
