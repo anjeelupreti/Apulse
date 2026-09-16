@@ -53,13 +53,13 @@ class EnableTenantRowLevelSecurity(Operation):
         self, app_label: str, schema_editor: Any, _from_state: Any, to_state: Any
     ) -> None:
         model = to_state.apps.get_model(app_label, self.model_name)
-        schema_editor.execute(enable_sql(model._meta.db_table, self.column))
+        schema_editor.execute(enable_sql(model._meta.db_table, self.column), params=None)
 
     def database_backwards(
         self, app_label: str, schema_editor: Any, from_state: Any, _to_state: Any
     ) -> None:
         model = from_state.apps.get_model(app_label, self.model_name)
-        schema_editor.execute(disable_sql(model._meta.db_table))
+        schema_editor.execute(disable_sql(model._meta.db_table), params=None)
 
     def describe(self) -> str:
         return f"Enable tenant row-level security on {self.model_name}"

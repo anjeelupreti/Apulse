@@ -61,3 +61,7 @@ versioning: [Semantic Versioning](https://semver.org).
   conversions on top, so selling four tablets out of a strip and receiving twenty boxes of ten
   strips are the same arithmetic. Barcodes identify the pack, so scanning a box adds a box.
   Quantities read the way a storekeeper counts: "2 boxes 4 strips 7 tablets", not "247 tablets".
+- Batches and the stock ledger. Every receipt, sale, adjustment and write-off is recorded, and the
+  database refuses to change or delete those records; a mistake is corrected by a reversing entry.
+  Stock is issued nearest-expiry-first, and expired or quarantined stock is never picked. Selling
+  expired stock is refused outright, while writing it off or returning it stays possible.

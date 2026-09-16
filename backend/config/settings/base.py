@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     # core domain
     "core.tax",
     "core.catalog",
+    "core.inventory",
 ]
 
 MIDDLEWARE = [

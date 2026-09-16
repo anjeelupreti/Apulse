@@ -538,10 +538,11 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P1 Promotions (time-bound offers, buy X get Y, loyalty multipliers)
 
 ## M4.5 Inventory engine
-- [ ] P0 `Batch` (item, batch no, mfg date, expiry date, MRP, purchase rate, supplier, GRN ref, status: available/quarantined/expired/recalled/damaged)
-- [ ] P0 `StockLedgerEntry` append-only (tenant, branch, location, item, batch, qty ± base unit, unit cost, value, doc type/id/line, posted_at, user) — partitioned
-- [ ] P0 `StockBalance` materialized per (location, item, batch) with row-level locking on post; nightly reconciliation job vs ledger; discrepancy alert
-- [ ] P0 Allocation strategies: FEFO (default for expiry-tracked), FIFO, manual with override permission + reason
+- [x] P0 `Batch` (item, number, mfg/expiry dates, MRP **per batch**, cost, status: available/quarantined/expired/recalled/damaged). Stock is usable **up to and including** its printed expiry date
+- [x] P0 `StockLedgerEntry` — **append-only in the database** (UPDATE, DELETE and TRUNCATE all refused); a mistake is corrected by a reversing entry that links to what it undoes, so the ledger shows the correction as well as the error. *Partitioning deferred with the audit table's, for the same reasons*
+- [x] P0 `StockBalance` per (location, item, batch), row-locked while posting, written in the same transaction as the ledger entry so the two cannot disagree; `reconcile()` **reports** discrepancies rather than silently fixing them, because a wrong number means something wrote stock outside the service layer
+- [~] P0 Allocation: **FEFO implemented and the default** — nearest expiry first, expired and quarantined stock never allocated, spilling across batches as needed. *FIFO and permissioned manual override pending*
+- [x] P0 Expired stock is a hard stop for sales but can still be written off or returned, or it could never leave the shelf
 - [ ] P0 Costing: moving weighted average (default) and batch-actual cost; cost used on sale posting
 - [ ] P0 Negative stock policy (setting; offline exception rules)
 - [ ] P0 Documents [DOC]: Stock Adjustment (reasons: damage, breakage, theft, expired write-off, count correction, sample; approval above value threshold), Stock Transfer (out → in-transit → received, partial receipt, discrepancy), Location Move (rack to rack), Opening Stock (import-driven)
