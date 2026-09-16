@@ -80,3 +80,27 @@ PAYMENT_ALREADY_REVERSED = register(
     "This payment has already been reversed.",
     "यो भुक्तानी पहिले नै उल्टाइसकिएको छ।",
 )
+CREDIT_NEEDS_A_NAMED_CUSTOMER = register(
+    "CREDIT_NEEDS_A_NAMED_CUSTOMER",
+    400,
+    "A sale on account needs a customer account. Select or add the customer first.",
+    "उधारो बिक्रीका लागि ग्राहकको खाता चाहिन्छ। पहिले ग्राहक छान्नुहोस् वा थप्नुहोस्।",
+)
+CREDIT_LIMIT_EXCEEDED = register(
+    "CREDIT_LIMIT_EXCEEDED",
+    409,
+    "This would take the customer past their credit limit.",
+    "यसले ग्राहकको उधारो सीमा नाघ्छ।",
+)
+CUSTOMER_HAS_OVERDUE_BILLS = register(
+    "CUSTOMER_HAS_OVERDUE_BILLS",
+    409,
+    "This customer has bills past their due date. Settle those before selling on account again.",
+    "यो ग्राहकका म्याद नाघेका बीजक छन्। पुनः उधारो दिनुअघि ती चुक्ता गर्नुहोस्।",
+)
+OVERRIDE_NEEDS_A_NAME = register(
+    "OVERRIDE_NEEDS_A_NAME",
+    400,
+    "An override has to say who authorised it.",
+    "छुट कसले स्वीकृत गर्‍यो सो उल्लेख गर्नुपर्छ।",
+)

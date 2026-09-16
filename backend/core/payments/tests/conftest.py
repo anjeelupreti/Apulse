@@ -8,7 +8,7 @@ from core.catalog.models import UnitOfMeasure
 from core.catalog.services import add_pack, create_item
 from core.inventory.services import receive_stock
 from core.payments.models import PaymentMode
-from core.payments.services import install_default_modes
+from core.payments.services import install_default_modes, open_shift
 from core.tax.models import TaxCategory
 from kernel.identity.models import User
 from kernel.numbering import registry
@@ -80,6 +80,17 @@ def cashier():
 def supervisor():
     return User.objects.create_user(
         "boss@example.com", "s3cure-pass-phrase", full_name="Hari Thapa"
+    )
+
+
+@pytest.fixture
+def shift(branch, counter, cashier):
+    return open_shift(
+        branch=branch,
+        location=counter,
+        cashier=cashier,
+        opening_float=Decimal("2000"),
+        business_date=TODAY,
     )
 
 

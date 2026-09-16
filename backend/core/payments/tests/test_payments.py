@@ -40,17 +40,6 @@ pytestmark = [
 ]
 
 
-@pytest.fixture
-def shift(branch, counter, cashier):
-    return open_shift(
-        branch=branch,
-        location=counter,
-        cashier=cashier,
-        opening_float=Decimal("2000"),
-        business_date=TODAY,
-    )
-
-
 def a_bill(paracetamol, branch, counter, *, strips="4"):
     """An issued bill for 80 rupees: four strips at 20."""
     stock_up(paracetamol, branch, counter)

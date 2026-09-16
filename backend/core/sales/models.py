@@ -79,6 +79,10 @@ class SalesInvoice(TenantScopedModel):
         max_digits=18, decimal_places=AMOUNT_DECIMALS, default=Decimal("0")
     )
 
+    #: When a credit sale falls due. Frozen from the customer's terms on the day of the sale, so
+    #: that shortening their terms next year does not make last year's bills retrospectively late.
+    due_date = models.DateField(null=True, blank=True)
+
     #: Every reprint is counted. IRD requires copies after the first to be marked as copies.
     print_count = models.PositiveIntegerField(default=0)
     note = models.CharField(max_length=300, blank=True)

@@ -17,7 +17,7 @@ from kernel.audit.models import AuditAction
 from shared.errors import DomainError
 from shared.formatting import quantize_money
 
-from . import errors
+from . import credit, errors
 from .denominations import count_total, needs_explanation, unknown_values
 from .models import (
     CashierShift,
@@ -179,6 +179,8 @@ def record_payment(
     actor: Any = None,
     reason: str = "",
     note: str = "",
+    override_reason: str = "",
+    override_by: Any = None,
 ) -> Payment:
     """Record one movement of money, and work out the change if there is any.
 
@@ -204,6 +206,16 @@ def record_payment(
         if handed_over < due:
             raise DomainError(errors.NOT_ENOUGH_TENDERED)
         change = handed_over - due
+
+    if mode.kind == PaymentModeKind.CREDIT:
+        # An account sale is a decision, not a payment method with no cash behind it.
+        credit.enforce(
+            party,
+            amount=due,
+            on_date=received_on or timezone.localdate(),
+            override_reason=override_reason,
+            override_by=override_by or actor,
+        )
 
     if shift is None and mode.kind == PaymentModeKind.CASH:
         # Cash has to belong to a drawer somebody is answerable for. Anything else can be
@@ -250,6 +262,8 @@ def settle_invoice(
     tendered_cash: Decimal | int | str | None = None,
     references: Mapping[str, str] | None = None,
     actor: Any = None,
+    override_reason: str = "",
+    override_by: Any = None,
 ) -> list[Payment]:
     """Settle a bill, possibly across several methods at once.
 
@@ -259,11 +273,11 @@ def settle_invoice(
     """
     references = references or {}
     asked = sum((quantize_money(amount) for _mode, amount in tenders), start=Decimal("0.00"))
-    outstanding = amount_outstanding(invoice)
-    if asked > outstanding:
+    untendered = amount_untendered(invoice)
+    if asked > untendered:
         raise DomainError(
             errors.PAYMENT_EXCEEDS_WHAT_IS_DUE,
-            f"{outstanding} is outstanding on {invoice.number}, not {asked}.",
+            f"{untendered} is left to settle on {invoice.number}, not {asked}.",
         )
 
     payments = []
@@ -282,9 +296,71 @@ def settle_invoice(
                 reference=references.get(mode.code, ""),
                 received_on=invoice.invoice_date,
                 actor=actor,
+                override_reason=override_reason,
+                override_by=override_by,
             )
         )
+        if mode.kind == PaymentModeKind.CREDIT:
+            _freeze_due_date(invoice)
     return payments
+
+
+def _freeze_due_date(invoice: Any) -> None:
+    """Write the due date onto the bill the moment it becomes a credit sale.
+
+    Derived from the customer's terms as they stand today and then left alone. Recomputing it on
+    every read would mean that tightening a customer's terms silently turned last year's settled
+    history into a list of late payments.
+    """
+    if invoice.due_date is not None:
+        return
+    with tracking.paused():
+        invoice.due_date = credit.due_date_for(invoice)
+        invoice.save(update_fields=["due_date", "updated_at"])
+
+
+@transaction.atomic
+def receive_against(
+    invoice: Any,
+    *,
+    mode: PaymentMode,
+    amount: Decimal | int | str,
+    shift: CashierShift | None = None,
+    reference: str = "",
+    received_on: date | None = None,
+    actor: Any = None,
+    note: str = "",
+) -> Payment:
+    """Take money against a bill that is already outstanding.
+
+    A different act from settling at the counter, and the difference matters. `settle_invoice`
+    covers the tenders that make up the bill while the customer is standing there — including
+    putting it on account, which settles nothing and is meant not to. This is the cheque the
+    clinic sends the following month, and it is checked against **what is still owed** rather than
+    against what is left to tender, because the bill was fully tendered the day it was written.
+    """
+    asked = quantize_money(amount)
+    outstanding = amount_outstanding(invoice)
+    if asked > outstanding:
+        raise DomainError(
+            errors.PAYMENT_EXCEEDS_WHAT_IS_DUE,
+            f"{outstanding} is outstanding on {invoice.number}, not {asked}.",
+        )
+
+    return record_payment(
+        branch=invoice.branch,
+        shift=shift,
+        mode=mode,
+        amount=asked,
+        document_type=invoice._meta.label_lower,
+        document_id=str(invoice.pk),
+        document_number=invoice.number,
+        party=invoice.customer,
+        reference=reference,
+        received_on=received_on,
+        actor=actor,
+        note=note,
+    )
 
 
 @transaction.atomic
@@ -373,27 +449,56 @@ def reverse_payment(payment: Payment, *, reason: str, actor: Any = None) -> Paym
 
 # --------------------------------------------------------------------------- what is still owed
 def paid_amount(invoice: Any) -> Decimal:
-    """What has been received against a bill, net of anything reversed."""
-    rows = Payment.objects.filter(
-        document_type=invoice._meta.label_lower, document_id=str(invoice.pk)
-    )
-    total = sum((payment.signed_amount for payment in rows), start=Decimal("0.00"))
-    return quantize_money(total)
+    """Money actually received against a bill, net of anything reversed.
+
+    An "on account" tender is deliberately **not** counted. Putting a bill on account records how
+    it was settled at the counter, not that the money arrived — treating it as received is how a
+    receivables ledger comes to show nothing outstanding while the shop is owed a fortune.
+    """
+    rows = _payments_for(invoice).exclude(mode__kind=PaymentModeKind.CREDIT)
+    return quantize_money(sum((payment.signed_amount for payment in rows), start=Decimal("0.00")))
+
+
+def tendered_amount(invoice: Any) -> Decimal:
+    """Everything put against the bill at the counter, including what went on account.
+
+    What the overpay guard compares to. Without it a bill could be put on account twice over and
+    each tender would look allowable, because neither had brought in any money to notice.
+    """
+    rows = _payments_for(invoice)
+    return quantize_money(sum((payment.signed_amount for payment in rows), start=Decimal("0.00")))
+
+
+def _payments_for(document: Any) -> Any:
+    return Payment.objects.filter(
+        document_type=document._meta.label_lower, document_id=str(document.pk)
+    ).select_related("mode")
 
 
 def refunded_amount(credit_note: Any) -> Decimal:
-    rows = Payment.objects.filter(
-        document_type=credit_note._meta.label_lower, document_id=str(credit_note.pk)
-    )
+    rows = _payments_for(credit_note)
     total = sum((-payment.signed_amount for payment in rows), start=Decimal("0.00"))
     return quantize_money(total)
 
 
 def amount_outstanding(invoice: Any) -> Decimal:
-    """What is still owed on a bill: the total, less what was paid, less what was credited back."""
+    """What the customer still owes: the total, less money received, less what was credited back.
+
+    A bill put on account is fully outstanding until it is actually paid, which is the whole point
+    of the arrangement.
+    """
     from core.sales.returns import credited_amount
 
     return quantize_money(invoice.payable_amount - paid_amount(invoice) - credited_amount(invoice))
+
+
+def amount_untendered(invoice: Any) -> Decimal:
+    """What still needs a tender at the counter before the customer can leave."""
+    from core.sales.returns import credited_amount
+
+    return quantize_money(
+        invoice.payable_amount - tendered_amount(invoice) - credited_amount(invoice)
+    )
 
 
 def is_settled(invoice: Any) -> bool:

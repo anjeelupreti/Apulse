@@ -170,3 +170,27 @@ versioning: [Semantic Versioning](https://semver.org).
   people to type "ok" into the box. A supervisor signs the count off separately, since a cashier
   counting their own drawer and approving their own count is one person however many buttons they
   press.
+- Selling on account. Putting a bill on the customer's tab is not the money arriving: it records
+  how the bill was settled at the counter, and the invoice stays fully outstanding until somebody
+  actually pays. Counting it as received is how a receivables ledger comes to show nothing owed
+  while the shop is owed a fortune.
+
+  Two questions get asked, and they are different. The limit is how much exposure a customer is
+  allowed; overdue is whether they pay at all. A customer well inside their limit who has settled
+  nothing since Baisakh is the worse risk of the two, and either one blocks the sale. A zero limit
+  means no credit, never unlimited. The position is worked out and returned before it is raised as
+  an error, so the counter can say "you are 300 over and a bill from Shrawan is unpaid" instead of
+  a bare no.
+
+  An override needs a reason and a name, and is recorded as an override in the trail. One nobody
+  signed is the same as no control at all, and one with no reason is worse than none: it looks
+  like a control while teaching everybody that the box takes anything.
+
+  A bill's due date is frozen onto it the moment it goes on account, taken from the customer's
+  terms as they stood that day, so tightening their terms next year does not turn settled history
+  into a list of late payments.
+
+  Customers now have a statement — opening balance, bills as debits, payments and credit notes as
+  credits, a running balance, ordered by business date — and an ageing split, because every
+  collections conversation is "30,000 of it has been sitting since Ashadh" rather than "they owe
+  40,000".
