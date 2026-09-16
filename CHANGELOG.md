@@ -25,3 +25,8 @@ versioning: [Semantic Versioning](https://semver.org).
 - Nepal administrative divisions with an idempotent `import_geo` command; the seven provinces ship
   with the code.
 - UI design direction recorded ahead of the frontend work (`docs/DESIGN_DIRECTION.md`).
+- Authentication: sign in with an email address or a phone number; session cookies with a CSRF
+  bootstrap endpoint; two-factor authentication with an authenticator app plus single-use recovery
+  codes; lockout after repeated failures; a security log of every sign-in attempt; and
+  `/api/v1/me/context` returning the user, tenant, memberships and branches in one call.
+  Signing in on a tenant's own address requires an active membership of that tenant.

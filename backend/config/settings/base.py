@@ -114,6 +114,18 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_NAME = "npms_session"
 CSRF_COOKIE_NAME = "npms_csrftoken"
 
+# Sign in with an email address or a phone number: counter staff often have no email.
+AUTHENTICATION_BACKENDS = ["kernel.identity.backends.EmailOrPhoneBackend"]
+
+# Sign-in throttling. Counters are keyed on the identifier as typed and on the client IP, so a
+# lockout response never reveals whether an account exists.
+LOGIN_MAX_FAILED_ATTEMPTS = env.int("BACKEND_LOGIN_MAX_FAILED_ATTEMPTS", default=5)
+LOGIN_MAX_FAILED_ATTEMPTS_PER_IP = env.int("BACKEND_LOGIN_MAX_FAILED_ATTEMPTS_PER_IP", default=20)
+LOGIN_LOCKOUT_SECONDS = env.int("BACKEND_LOGIN_LOCKOUT_SECONDS", default=900)
+# Only enable behind a proxy that overwrites X-Forwarded-For; otherwise a client can spoof its IP.
+LOGIN_TRUST_FORWARDED_FOR = env.bool("BACKEND_LOGIN_TRUST_FORWARDED_FOR", default=False)
+TWO_FACTOR_ISSUER = env.str("BACKEND_TWO_FACTOR_ISSUER", default="NPMS")
+
 # ------------------------------------------------------------------ i18n / time
 LANGUAGE_CODE = "en"
 LANGUAGES = [("en", "English"), ("ne", "नेपाली")]
@@ -196,6 +208,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env.str("BACKEND_THROTTLE_ANON", default="60/min"),
         "user": env.str("BACKEND_THROTTLE_USER", default="600/min"),
+        "login": env.str("BACKEND_THROTTLE_LOGIN", default="10/min"),
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "kernel.foundation.api.exceptions.api_exception_handler",

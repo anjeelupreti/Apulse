@@ -285,13 +285,13 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P2 Tenant sandbox/training copy (clone tenant with anonymized data for staff training)
 
 ## M2.2 Identity & authentication
-- [ ] P0 Global `User` (email and/or phone as login, name en/ne, avatar, language, status); `TenantMembership` (user ↔ tenant, status invited/active/disabled, default branch)
-- [ ] P0 Login with email/phone + password; Argon2 hashing; password policy (length ≥ 10, breached password check offline list)
+- [x] P0 Global `User` (email **and/or** phone as login, name en/ne, language, status); `TenantMembership` (user ↔ tenant, status invited/active/disabled, default branch) — *avatar pending*
+- [~] P0 Login with email/phone + password; Argon2 hashing; password policy (length ≥ 10) — **done, plus: the backend hashes even for a non-existent account so response timing is not an enumeration oracle, and a tenant address only admits its own active members** — breached-password list pending
 - [ ] P0 Invitations (email/SMS link, expiry 72h, resend, revoke)
 - [ ] P0 Password reset (email/SMS OTP), rate-limited, no user enumeration
-- [ ] P0 2FA: TOTP (authenticator apps) + recovery codes; enforced for Owner/Admin roles and all platform staff; SMS OTP fallback (setting)
-- [ ] P0 Sessions: HttpOnly Secure SameSite cookies for web; JWT access (5–15 min) + rotating refresh with reuse detection for desktop/mobile; list active sessions & devices; revoke session; logout everywhere
-- [ ] P0 Account lockout / progressive delay after failed attempts; login audit (IP, UA, geo)
+- [~] P0 2FA: TOTP + single-use recovery codes (hashed like passwords, ambiguous characters excluded), enrol → confirm-with-live-code → codes shown once, disable and regenerate both require the password, **and an accepted code cannot be replayed within its validity window** — *role-based enforcement waits for M2.3; SMS OTP fallback pending; **`TwoFactorDevice.secret` is stored unencrypted — see X-SEC field-level encryption***
+- [~] P0 Sessions: HttpOnly Secure SameSite cookies for web + CSRF bootstrap endpoint — **JWT access/refresh with reuse detection, session listing and revocation pending**
+- [x] P0 Account lockout after repeated failures (per identifier **and** per IP, keyed on the identifier as typed so a lockout never confirms an account exists); `LoginAttempt` log with outcome, IP and user agent — *progressive delay and geo pending*
 - [ ] P0 Idle session timeout (configurable per tenant; POS longer with quick PIN re-lock)
 - [ ] P0 **Quick user switch on POS**: shared terminal, staff unlock with 4–6 digit PIN tied to their account (every sale attributed to real user)
 - [ ] P0 Device registry: register POS/desktop device to branch (admin approval), device token, last seen, revoke
@@ -308,7 +308,7 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P0 Server-side checks: DRF permission classes + object-level branch scope filter; queryset scoping by assigned branches
 - [ ] P0 Field-level visibility: cost price, margin, supplier rates, patient diagnosis — permission-gated in serializers
 - [ ] P0 Professional qualification gates: some actions require user to have verified credential (e.g., dispense Samuha KA requires registered pharmacist) — `UserCredential` (type NPC/NMC/NHPC, number, expiry, verified_by, document)
-- [ ] P0 `/api/v1/me/context` endpoint: user, tenant, memberships, branches, permissions, features, limits, nav, settings subset, server time (AD/BS), fiscal year
+- [~] P0 `/api/v1/me/context` endpoint — **user, tenant, memberships, branches and server time done**; permissions and features are present but empty until M2.3/M2.5; limits, nav, settings subset, BS date and fiscal year pending
 - [ ] P1 Temporary access grants (expiring role assignment) — used for inspectors & locum pharmacists
 - [ ] P1 Permission change audit & monthly "access review" report for owners
 
@@ -970,7 +970,7 @@ To avoid "small things forgotten", every entity/screen **must** satisfy these co
 - [ ] P0 Threat model (STRIDE) for kernel, POS/offline, control plane impersonation, integrations — refreshed each phase
 - [ ] P0 OWASP ASVS L2 checklist tracked; secure headers (CSP, HSTS, frame-ancestors), CSRF, CORS allow-list
 - [ ] P0 Dependency, container, IaC scanning in CI; SBOM per release
-- [ ] P0 Field-level encryption for sensitive PII; key rotation procedure
+- [ ] P0 Field-level encryption for sensitive PII; key rotation procedure — **blocking for `identity.TwoFactorDevice.secret`, which is currently stored in clear text: anyone with read access to that table can mint valid second-factor codes**
 - [ ] P0 Secrets rotation schedule (DB, gateway keys, JWT signing keys)
 - [ ] P0 Least-privilege production access; break-glass procedure with audit; quarterly access review
 - [ ] P0 Privacy: consent management, data subject access/export/correction, data minimization, retention schedules (CR-PRIV-01)

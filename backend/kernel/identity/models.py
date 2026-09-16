@@ -55,3 +55,76 @@ class User(BaseModel, AbstractBaseUser, PermissionsMixin):
         super().clean()
         self.email = normalize_email_address(self.email)
         self.phone = normalize_phone(self.phone)
+
+
+class TwoFactorDevice(BaseModel):
+    """An authenticator app enrolled by one user."""
+
+    # TODO(X-SEC): move `secret` to field-level encryption with a KMS-managed key. Anyone with
+    # read access to this table can currently mint valid codes, so treat it like a password hash
+    # table until that lands.
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="two_factor")
+    secret = models.CharField(max_length=64)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    #: The TOTP time step most recently accepted, so one code cannot be replayed inside its window.
+    last_used_timestep = models.BigIntegerField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"2FA for {self.user}"
+
+    @property
+    def is_confirmed(self) -> bool:
+        return self.confirmed_at is not None
+
+
+class RecoveryCode(BaseModel):
+    """Single-use fallback for a lost authenticator. Stored hashed, exactly like a password."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.CharField(max_length=128)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "used_at"])]
+
+    def __str__(self) -> str:
+        return f"Recovery code for {self.user}"
+
+
+class LoginOutcome(models.TextChoices):
+    SUCCESS = "success", _("Signed in")
+    INVALID_CREDENTIALS = "invalid_credentials", _("Wrong identifier or password")
+    LOCKED_OUT = "locked_out", _("Too many attempts")
+    DISABLED = "disabled", _("Account disabled")
+    NO_TENANT_ACCESS = "no_tenant_access", _("Not a member of this account")
+    TWO_FACTOR_REQUIRED = "two_factor_required", _("Password accepted, code required")
+    TWO_FACTOR_FAILED = "two_factor_failed", _("Wrong verification code")
+    RECOVERY_CODE_USED = "recovery_code_used", _("Signed in with a recovery code")
+
+
+class LoginAttempt(BaseModel):
+    """Security log of every sign-in attempt, successful or not.
+
+    Kept out of row-level security because an attempt may name a tenant the person has no access
+    to — that is precisely the case worth recording. The tenant is denormalised to a slug so the
+    record survives the tenant being removed.
+    """
+
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="login_attempts"
+    )
+    identifier = models.CharField(max_length=254)
+    tenant_slug = models.CharField(max_length=63, blank=True)
+    outcome = models.CharField(max_length=30, choices=LoginOutcome.choices, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=400, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["identifier", "-created_at"]),
+            models.Index(fields=["user", "-created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.identifier} — {self.outcome}"

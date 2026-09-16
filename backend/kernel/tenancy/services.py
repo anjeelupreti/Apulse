@@ -1,6 +1,7 @@
 """Tenant lifecycle. The only supported way to create or change the state of a tenant."""
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import structlog
 from django.db import transaction
@@ -13,8 +14,12 @@ from .models import (
     LocationType,
     Tenant,
     TenantDomain,
+    TenantMembership,
     TenantStatus,
 )
+
+if TYPE_CHECKING:
+    from kernel.identity.models import User
 
 logger = structlog.get_logger(__name__)
 
@@ -40,6 +45,7 @@ def provision_tenant(
     status: str = TenantStatus.TRIAL,
     name_ne: str = "",
     domain: str | None = None,
+    owner: "User | None" = None,
 ) -> ProvisionedTenant:
     """Create a tenant with its first legal entity, branch and stock locations.
 
@@ -71,6 +77,16 @@ def provision_tenant(
             domain=domain.strip().lower(),
             defaults={"tenant": tenant, "is_primary": True, "is_verified": True},
         )
+
+    if owner is not None:
+        # Without a membership nobody could sign in on this tenant's own address.
+        membership, _ = TenantMembership.objects.get_or_create(
+            tenant=tenant, user=owner, defaults={"status": TenantMembership.Status.ACTIVE}
+        )
+        if membership.default_branch_id is None:
+            membership.default_branch = branch
+            membership.status = TenantMembership.Status.ACTIVE
+            membership.save(update_fields=["default_branch", "status", "updated_at"])
 
     if created:
         tenant.set_status(status, reason="Provisioned")
